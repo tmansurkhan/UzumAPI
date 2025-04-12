@@ -11,7 +11,7 @@ from google.auth.transport.requests import Request
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 # GitHub Secrets'dan `service_account.json` ma'lumotlarini o'qish
-google_credentials = os.getenv('SERVICE_ACCOUNT_JSON')
+google_credentials = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
 if not google_credentials:
     print("❌ GOOGLE_APPLICATION_CREDENTIALS muhit o'zgaruvchisi o'rnatilmagan.")

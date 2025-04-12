@@ -1,25 +1,31 @@
-name: Run Python Script Manually
+name: Run Uzum API Script
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # qo'lda ishga tushirish uchun
+  schedule:
+    - cron: '*/15 * * * *'  # har 15 daqiqada ishga tushadi
 
 jobs:
-  run-python-script:
-    runs-on: windows-latest  # This will run on a Windows environment
+  run-script:
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Repozitoriyani yuklash
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'  # Adjust the version if needed
+      - name: Python 3.9 ni sozlash
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Kutubxonalarni o'rnatish
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run Python script
-      run: python main.py  # Replace with the name of your script
+      - name: Google service_account.json faylini yaratish
+        run: |
+          echo '${{ secrets.GSHEET_CREDENTIALS }}' > service_account.json
+
+      - name: Python kodni ishga tushurish
+        run: python main.py

@@ -1,19 +1,19 @@
-name: Run Python script every hour
+name: Uzum API Integration
 
 on:
   schedule:
-    - cron: '0 * * * *'  # This runs every hour
-  workflow_dispatch:  # This allows manual triggering of the workflow
+    - cron: "0 * * * *"  # Har soatda ishga tushadi
+  workflow_dispatch:
 
 jobs:
-  run-script:
+  run-python-script:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
@@ -22,16 +22,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create service account credentials file from secret
-        run: |
-          echo "$GOOGLE_CREDS_JSON" > service_account.json
+      - name: Create service account file from secret
+        run: echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > service_account.json
 
-      - name: Run the Python script
+      - name: Run the script
         run: |
           python main.py
         env:
-          SERVIC_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
-
-      - name: Clean up
-        run: |
-          rm -f service_account.json
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}

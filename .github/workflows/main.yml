@@ -2,8 +2,6 @@ name: Run Uzum API Script
 
 on:
   workflow_dispatch:  # qo'lda ishga tushirish uchun
-  schedule:
-    - cron: '*/15 * * * *'  # har 15 daqiqada ishga tushadi
 
 jobs:
   run-script:

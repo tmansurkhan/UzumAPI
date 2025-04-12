@@ -1,4 +1,4 @@
-name: Run Uzum API Script
+name: Run Uzum API Script 
 
 on:
   workflow_dispatch:  # qo'lda ishga tushirish uchun

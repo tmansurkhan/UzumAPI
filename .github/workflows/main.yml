@@ -1,29 +1,37 @@
-name: Run Uzum API Script 
+name: Run Python script every hour
 
 on:
-  workflow_dispatch:  # qo'lda ishga tushirish uchun
+  schedule:
+    - cron: '0 * * * *'  # This runs every hour
+  workflow_dispatch:  # This allows manual triggering of the workflow
 
 jobs:
   run-script:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Repozitoriyani yuklash
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      - name: Python 3.9 ni sozlash
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
           python-version: '3.9'
 
-      - name: Kutubxonalarni o'rnatish
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: service_account.json faylini yozish
-  run: |
-    echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" | jq -r > service_account.json
+      - name: Create service account credentials file from secret
+        run: |
+          echo "$GOOGLE_CREDS_JSON" > service_account.json
 
-      - name: Python kodni ishga tushurish
-        run: python main.py
+      - name: Run the Python script
+        run: |
+          python main.py
+        env:
+          SERVIC_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+
+      - name: Clean up
+        run: |
+          rm -f service_account.json

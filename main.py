@@ -18,7 +18,7 @@ def get_or_create_sheet(title, rows=100, cols=10):
     except gspread.exceptions.WorksheetNotFound:
         return spreadsheet.add_worksheet(title=title, rows=rows, cols=cols)
 
-# --- 1. Shop ma'lumotlari ---
+# --- 1. Shop ma'lumotlari --- 
 shop_sheet = get_or_create_sheet("ShopID", 100, 2)
 shop_sheet.clear()
 
@@ -43,11 +43,11 @@ if response.status_code == 200:
 else:
     print(f"❌ API xatolik: {response.status_code}")
 
-# --- 2. Orders ma'lumotlari ---
+# --- 2. Orders ma'lumotlari --- 
 orders_sheet = get_or_create_sheet("Orders", 100, 13)
 orders_sheet.clear()
-orders_sheet.append_row([
-    "Order ID", "Status", "shopId", "ProductTitle", "SellPrice", "Commission", "logisticDeliveryFee",
+orders_sheet.append_row([ 
+    "Order ID", "Status", "shopId", "ProductTitle", "SellPrice", "Commission", "logisticDeliveryFee", 
     "amount", "SellerProfit", "withdrawnProfit", "purchasePrice", "Image URL", "date"
 ])
 
@@ -81,8 +81,8 @@ while True:
         withdrawn_profit = item.get("withdrawnProfit")
         purchase_price = item.get("purchasePrice")
         image_url = item.get("productImage", {}).get("photo", {}).get("800", {}).get("high", "N/A")
-        date = datetime.fromtimestamp(item.get("date", 0) / 1000).strftime('%Y-%m-%d %H:%M')  # ✅ to‘liq sana + vaqt
-        rows.append([
+        date = datetime.fromtimestamp(item.get("date", 0) / 1000).strftime('%Y-%m-%d %H:%M')
+        rows.append([ 
             order_id, status, shopId, title, sell_price, commission, logistic_fee, amount,
             seller_profit, withdrawn_profit, purchase_price, image_url, date
         ])
@@ -96,11 +96,11 @@ while True:
         break
     params["page"] += 1
 
-# --- 3. Aggregatsiya: date_info_total ---
+# --- 3. Aggregatsiya: date_info_total --- 
 date_info_sheet = get_or_create_sheet("date_info_total", 100, 10)
 date_info_sheet.clear()
-date_info_sheet.append_row([
-    "Date", "SKU", "Shop ID", "Quantity Sold", "Total Sales", "Purchase Total",
+date_info_sheet.append_row([ 
+    "Date", "SKU", "Shop ID", "Quantity Sold", "Total Sales", "Purchase Total", 
     "Seller Profit Total", "Commission Total", "Delivery Fee Total", "Image URL"
 ])
 
@@ -110,7 +110,7 @@ sales_data = {}
 for row in data[1:]:
     try:
         full_date = row[12]
-        date = full_date.split(" ")[0]  # ✅ faqat sana (YYYY-MM-DD)
+        date = full_date.split(" ")[0]
         sku = row[3]
         price = float(row[4])
         commission = float(row[5])
@@ -127,10 +127,10 @@ for row in data[1:]:
         key = f"{date}-{sku}-{shop_id}"
 
         if key not in sales_data:
-            sales_data[key] = {
-                "date": date, "sku": sku, "shopId": shop_id, "quantity": 0, "totalSales": 0,
-                "purchaseTotal": 0, "sellerProfitTotal": 0, "commissionTotal": 0,
-                "deliveryFeeTotal": 0, "image": image_url
+            sales_data[key] = { 
+                "date": date, "sku": sku, "shopId": shop_id, "quantity": 0, "totalSales": 0, 
+                "purchaseTotal": 0, "sellerProfitTotal": 0, "commissionTotal": 0, 
+                "deliveryFeeTotal": 0, "image": image_url 
             }
 
         sales_data[key]["quantity"] += quantity
@@ -146,7 +146,7 @@ for row in data[1:]:
 
 batch_rows = []
 for item in sales_data.values():
-    batch_rows.append([
+    batch_rows.append([ 
         item["date"], item["sku"], item["shopId"], item["quantity"], item["totalSales"],
         item["purchaseTotal"], item["sellerProfitTotal"], item["commissionTotal"], item["deliveryFeeTotal"],
         item["image"]
@@ -155,18 +155,18 @@ for item in sales_data.values():
 date_info_sheet.append_rows(batch_rows, value_input_option="RAW")
 print("✅ Aggregatsiya natijalari date_info_total varag‘iga yozildi.")
 
-# --- 4. Kunlik umumiy: daily_info_total ---
+# --- 4. Kunlik umumiy: daily_info_total --- 
 daily_sheet = get_or_create_sheet("daily_info_total", 100, 11)
 daily_sheet.clear()
-daily_sheet.append_row([
-    "Date", "SKU Prefix", "Shop Name(s)", "Quantity", "Total Sales", "Total Purchase Price",
+daily_sheet.append_row([ 
+    "Date", "SKU Prefix", "Shop Name(s)", "Quantity", "Total Sales", "Total Purchase Price", 
     "Total Seller Profit", "Total Commission", "Total Logistic Fee", "Image"
 ])
 
 data = date_info_sheet.get_all_values()
-aggregated = defaultdict(lambda: {
-    "quantity": 0, "sales": 0, "purchase": 0, "profit": 0,
-    "commission": 0, "logistics": 0, "image": "", "shopIds": set()
+aggregated = defaultdict(lambda: { 
+    "quantity": 0, "sales": 0, "purchase": 0, "profit": 0, 
+    "commission": 0, "logistics": 0, "image": "", "shopIds": set() 
 })
 
 for row in data[1:]:
@@ -188,7 +188,7 @@ batch_rows = []
 for key, values in aggregated.items():
     date, sku_prefix = key.split("_", 1)
     shop_names = [shop_id_name_map.get(shop_id, f"ID:{shop_id}") for shop_id in values["shopIds"]]
-    batch_rows.append([
+    batch_rows.append([ 
         date, sku_prefix, ", ".join(sorted(shop_names)), values["quantity"], values["sales"], values["purchase"],
         values["profit"], values["commission"], values["logistics"],
         f'=IMAGE("{values["image"]}")'

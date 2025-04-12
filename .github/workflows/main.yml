@@ -23,9 +23,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Google service_account.json faylini yaratish
-        run: |
-          echo '${{ secrets.GSHEET_CREDENTIALS }}' > service_account.json
+      - name: service_account.json faylini yozish
+  run: |
+    echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" | jq -r > service_account.json
 
       - name: Python kodni ishga tushurish
         run: python main.py

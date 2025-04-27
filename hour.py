@@ -30,8 +30,8 @@ def process_last_hour_orders():
     # hour_info sahifani tozalab, yangi sarlavha yozamiz
     hour_info_sheet.clear()
     hour_info_sheet.append_row([
-        "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn Profit", 
-        "SKU", "Wihdrawn", "Sold Quantity"
+        "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn", 
+        "SKU", "Sold Quantity"
     ])
 
     orders_data = orders_sheet.get_all_values()
@@ -50,12 +50,12 @@ def process_last_hour_orders():
             if one_hour_ago <= order_time <= current_time:
                 quantity = int(row[7])         # Sold quantity
                 sell_price = float(row[4])     # Sale price
-                withdrawn_profit = float(row[8])  # Withdrawn profit
+                withdrawn = float(row[8])  # Withdrawn profit
                 sku = row[3]
 
                 total_products_sold += quantity
                 total_sales += sell_price * quantity
-                total_withdrawn_profit += withdrawn_profit * quantity
+                total_withdrawn += withdrawn * quantity
 
                 # Ma'lumotlarni yig'amiz
                 sku_sales[sku]["sold_qty"] += quantity

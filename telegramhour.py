@@ -5,11 +5,7 @@ import gspread
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
-import locale
 from google.oauth2.service_account import Credentials
-
-# --- Locale sozlamalari (raqamlar uchun) ---
-locale.setlocale(locale.LC_ALL, "uz_UZ.UTF-8")  # Yoki mos keladigan lokalni tanlang
 
 # --- Google Sheets'ga ulanish ---
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -23,14 +19,6 @@ spreadsheet = client.open("Uzum API")  # Sheets fayl nomi
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-# --- Raqamlarni formatlash funktsiyasi ---
-def format_number(number):
-    try:
-        return locale.format_string("%d", number, grouping=True)
-    except:
-        return number  # Agar xatolik bo'lsa, o'zini qaytarish
-
-# --- Telegramga rasm va matn yuborish ---
 def send_photo_with_caption(photo_path, caption):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     with open(photo_path, "rb") as photo_file:
@@ -48,7 +36,6 @@ def send_photo_with_caption(photo_path, caption):
         else:
             print(f"⚠️ Xatolik: {response.text}")
 
-# --- Ma'lumotlarni olish va yuborish ---
 def fetch_and_send_hour_info():
     hour_info_sheet = spreadsheet.worksheet("hour_info")
     values = hour_info_sheet.get_all_values()
@@ -59,9 +46,9 @@ def fetch_and_send_hour_info():
 
     # A2, B2, C2, D2 ma'lumotlarini o'qib olamiz
     time_range = values[1][0] if len(values[1]) > 0 else "Noma'lum"
-    total_products_sold = format_number(int(values[1][1])) if len(values[1]) > 1 else "0"
-    total_sales = format_number(int(values[1][2])) if len(values[1]) > 2 else "0"
-    total_withdrawn = format_number(int(values[1][3])) if len(values[1]) > 3 else "0"
+    total_products_sold = values[1][1] if len(values[1]) > 1 else "0"
+    total_sales = values[1][2] if len(values[1]) > 2 else "0"
+    total_withdrawn = values[1][3] if len(values[1]) > 3 else "0"
 
     # SKU sotuv ma'lumotlarini pandas orqali o'qib olamiz
     sku_data = values[2:]  # 3-qator va pastdagi qatorlar

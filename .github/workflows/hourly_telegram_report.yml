@@ -1,33 +1,32 @@
-name: Hourly Telegram Report (GMT+5)
+name: Har soatlik Uzum API hisobot
 
 on:
   schedule:
-    - cron: '0 * * * *' # Har soat UTC bo'yicha ishga tushadi
-  workflow_dispatch: # Qo'lda ishga tushurish ham mumkin
+    - cron: '0 * * * *'  # Har soat boshida ishga tushadi (UTC)
+  workflow_dispatch:     # Qo'lda "Run workflow" bosish imkoniyati
 
 jobs:
-  send_report:
+  send_hour_info:
     runs-on: ubuntu-latest
 
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+
     steps:
-    - name: 🔹 Repositoryni yuklab olish
-      uses: actions/checkout@v4
+      - name: Repositoryni yuklab olish
+        uses: actions/checkout@v4
 
-    - name: 🔹 Python va kutubxonalarni ornatish
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Pythonni o'rnatish
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: 🔹 Zarur kutubxonalarni ornatish
-      run: |
-        pip install --upgrade pip
-        pip install gspread google-auth requests
+      - name: Kutubxonalarni o'rnatish
+        run: |
+          python -m pip install --upgrade pip
+          pip install gspread google-auth requests pandas matplotlib
 
-    - name: 🔹 Xabar yuborish
-      env:
-        GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      run: |
-        echo "▶️ Ishga tushgan vaqt (GMT+5): $(TZ='Asia/Tashkent' date)"
-        python telegramhour.py
+      - name: Har soatlik hisobotni yuborish
+        run: python telegramhour.py

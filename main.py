@@ -7,18 +7,19 @@ from collections import defaultdict
 from datetime import datetime
 import time
 
-# Google Sheets'ga ulanish
+# --- 0. Google Sheets'ga ulanish ---
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# GitHub secrets'dan service_account.json ni olish
+# GitHub Secrets'dan service_account.json va Uzum API tokenini olish
 service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+uzum_api_token = os.environ["UZUM_API_TOKEN"]
 
-# Google Sheets bilan ulanish uchun credentials yaratish
+# Google Sheets bilan ulanish
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
 spreadsheet = client.open("Uzum API")
 
-# Sheetni olish yoki yaratish
+# Helper: Sheetni olish yoki yaratish
 def get_or_create_sheet(title, rows=100, cols=10):
     try:
         return spreadsheet.worksheet(title)
@@ -29,12 +30,13 @@ def get_or_create_sheet(title, rows=100, cols=10):
 shop_sheet = get_or_create_sheet("ShopID", 100, 2)
 shop_sheet.clear()
 
-url = "https://api-seller.uzum.uz/api/seller-openapi/v1/shops"
+shop_url = "https://api-seller.uzum.uz/api/seller-openapi/v1/shops"
 headers = {
-    "Authorization": "OsfBx+VPNzoViSLx20H8RcTEKqJtoMOEzDokHG3sqN8=",
+    "Authorization": uzum_api_token,
     "Accept": "*/*"
 }
-response = requests.get(url, headers=headers)
+
+response = requests.get(shop_url, headers=headers)
 shop_id_name_map = {}
 
 if response.status_code == 200:
@@ -48,7 +50,7 @@ if response.status_code == 200:
     shop_sheet.append_rows(rows, value_input_option="RAW")
     print("✅ Shop ma’lumotlari ShopID varag‘iga yozildi.")
 else:
-    print(f"❌ API xatolik: {response.status_code}")
+    print(f"❌ Shop API xatosi: {response.status_code}")
 
 # --- 2. Orders ma'lumotlari ---
 orders_sheet = get_or_create_sheet("Orders", 100, 13)
@@ -58,20 +60,25 @@ orders_sheet.append_row([
     "amount", "SellerProfit", "withdrawnProfit", "purchasePrice", "Image URL", "date"
 ])
 
-url = "https://api-seller.uzum.uz/api/seller-openapi/v1/finance/orders"
-params = {"page": 0, "size": 10000, "group": "false", "shopIds": [12488, 20002, 23251, 33077, 33863, 42620]}
+orders_url = "https://api-seller.uzum.uz/api/seller-openapi/v1/finance/orders"
+params = {
+    "page": 0,
+    "size": 10000,
+    "group": "false",
+    "shopIds": [12488, 20002, 23251, 33077, 33863, 42620]
+}
 
 total_orders = 0
 while True:
-    response = requests.get(url, headers=headers, params=params)
+    response = requests.get(orders_url, headers=headers, params=params)
     if response.status_code != 200:
-        print(f"❌ Xatolik yuz berdi: {response.status_code}")
+        print(f"❌ Orders API xatosi: {response.status_code}")
         break
 
     data = response.json()
     orderItems = data.get("orderItems", [])
     if not orderItems:
-        print("✅ Barcha ma’lumotlar yuklandi.")
+        print("✅ Barcha buyurtmalar yuklandi.")
         break
 
     rows = []
@@ -88,7 +95,8 @@ while True:
         withdrawn_profit = item.get("withdrawnProfit")
         purchase_price = item.get("purchasePrice")
         image_url = item.get("productImage", {}).get("photo", {}).get("800", {}).get("high", "N/A")
-        date = datetime.fromtimestamp(item.get("date", 0) / 1000).strftime('%Y-%m-%d %H:%M')  # ✅ to‘liq sana + vaqt
+        date = datetime.fromtimestamp(item.get("date", 0) / 1000).strftime('%Y-%m-%d %H:%M')
+
         rows.append([
             order_id, status, shopId, title, sell_price, commission, logistic_fee, amount,
             seller_profit, withdrawn_profit, purchase_price, image_url, date
@@ -97,8 +105,8 @@ while True:
     orders_sheet.append_rows(rows, value_input_option="RAW")
     total_orders += len(rows)
     print(f"{len(rows)} ta buyurtma qo‘shildi. Jami: {total_orders} ta.")
-    time.sleep(2)
 
+    time.sleep(2)
     if len(orderItems) < params["size"]:
         break
     params["page"] += 1
@@ -117,7 +125,7 @@ sales_data = {}
 for row in data[1:]:
     try:
         full_date = row[12]
-        date = full_date.split(" ")[0]  # ✅ faqat sana (YYYY-MM-DD)
+        date = full_date.split(" ")[0]
         sku = row[3]
         price = float(row[4])
         commission = float(row[5])
@@ -161,3 +169,90 @@ for item in sales_data.values():
 
 date_info_sheet.append_rows(batch_rows, value_input_option="RAW")
 print("✅ Aggregatsiya natijalari date_info_total varag‘iga yozildi.")
+
+# --- 4. Kunlik umumiy: daily_info_total ---
+daily_sheet = get_or_create_sheet("daily_info_total", 100, 11)
+daily_sheet.clear()
+daily_sheet.append_row([
+    "Date", "SKU Prefix", "Shop Name(s)", "Quantity", "Total Sales", "Total Purchase Price",
+    "Total Seller Profit", "Total Commission", "Total Logistic Fee", "Image"
+])
+
+aggregated = defaultdict(lambda: {
+    "quantity": 0, "sales": 0, "purchase": 0, "profit": 0,
+    "commission": 0, "logistics": 0, "image": "", "shopIds": set()
+})
+
+for row in date_info_sheet.get_all_values()[1:]:
+    date, sku_full = row[0], row[1]
+    sku_prefix = "-".join(sku_full.split("-")[:2]) if "-" in sku_full else sku_full
+    key = f"{date}_{sku_prefix}"
+
+    aggregated[key]["quantity"] += int(row[3])
+    aggregated[key]["sales"] += float(row[4])
+    aggregated[key]["purchase"] += float(row[5])
+    aggregated[key]["profit"] += float(row[6])
+    aggregated[key]["commission"] += float(row[7])
+    aggregated[key]["logistics"] += float(row[8])
+    aggregated[key]["shopIds"].add(row[2])
+    if not aggregated[key]["image"]:
+        aggregated[key]["image"] = row[9]
+
+batch_rows = []
+for key, values in aggregated.items():
+    date, sku_prefix = key.split("_", 1)
+    shop_names = [shop_id_name_map.get(shop_id, f"ID:{shop_id}") for shop_id in values["shopIds"]]
+    batch_rows.append([
+        date, sku_prefix, ", ".join(sorted(shop_names)), values["quantity"], values["sales"], values["purchase"],
+        values["profit"], values["commission"], values["logistics"],
+        f'=IMAGE("{values["image"]}")'
+    ])
+
+daily_sheet.append_rows(batch_rows, value_input_option="USER_ENTERED")
+print("✅ Kunlik umumiy ma’lumotlar daily_info_total varag‘iga yozildi.")
+
+# --- 5. Soddalashtirilgan kunlik umumiy: daily_total ---
+daily_total_sheet = get_or_create_sheet("daily_total", 100, 6)
+daily_total_sheet.clear()
+daily_total_sheet.append_row([
+    "Date", "Quantity", "Total Sales", "Total Purchase Price", "Total Commission", "Total Logistic Fee"
+])
+
+aggregated_data = defaultdict(lambda: {
+    "quantity": 0,
+    "total_sales": 0,
+    "total_purchase": 0,
+    "total_commission": 0,
+    "total_logistics": 0
+})
+
+for row in date_info_sheet.get_all_values()[1:]:
+    try:
+        date = row[0]
+        quantity = int(row[3])
+        total_sales = float(row[4])
+        total_purchase = float(row[5])
+        total_commission = float(row[7])
+        total_logistics = float(row[8])
+
+        agg = aggregated_data[date]
+        agg["quantity"] += quantity
+        agg["total_sales"] += total_sales
+        agg["total_purchase"] += total_purchase
+        agg["total_commission"] += total_commission
+        agg["total_logistics"] += total_logistics
+
+    except (IndexError, ValueError) as e:
+        print(f"⚠️ Filtirlash xatosi: {e}")
+        continue
+
+rows_to_write = []
+for date in sorted(aggregated_data.keys(), reverse=True):
+    agg = aggregated_data[date]
+    rows_to_write.append([
+        date, agg["quantity"], agg["total_sales"], agg["total_purchase"],
+        agg["total_commission"], agg["total_logistics"]
+    ])
+
+daily_total_sheet.append_rows(rows_to_write, value_input_option="USER_ENTERED")
+print("✅ 'daily_total' sahifasiga umumlashtirilgan natijalar yozildi.")

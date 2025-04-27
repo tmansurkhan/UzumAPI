@@ -1,4 +1,4 @@
-name: Uzum API Integration
+name: Uzum API
 
 on:
   schedule:
@@ -30,3 +30,4 @@ jobs:
           python main.py
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          UZUM_API_TOKEN: ${{ secrets.UZUM_API_TOKEN }}

@@ -50,12 +50,12 @@ def process_last_hour_orders():
             if one_hour_ago <= order_time <= current_time:
                 quantity = int(row[7])         # Sold quantity
                 sell_price = float(row[4])     # Sale price
-                withdrawn = float(row[8])  # Withdrawn profit
+                withdrawn_profit = float(row[8])  # Withdrawn profit
                 sku = row[3]
 
                 total_products_sold += quantity
                 total_sales += sell_price * quantity
-                total_withdrawn += withdrawn * quantity
+                total_withdrawn += withdrawn_profit * quantity
 
                 # Ma'lumotlarni yig'amiz
                 sku_sales[sku]["sold_qty"] += quantity

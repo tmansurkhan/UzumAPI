@@ -12,6 +12,7 @@ SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 
 # GitHub Secrets'dan service_account.json va Uzum API tokenini olish
 service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+uzum_api_token = os.environ["UZUM_API_TOKEN"]
 
 # Google Sheets bilan ulanish
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
@@ -31,7 +32,7 @@ shop_sheet.clear()
 
 shop_url = "https://api-seller.uzum.uz/api/seller-openapi/v1/shops"
 headers = {
-    "Authorization": "OsfBx+VPNzoViSLx20H8RcTEKqJtoMOEzDokHG3sqN8=",
+    "Authorization": uzum_api_token,
     "Accept": "*/*"
 }
 
@@ -94,9 +95,7 @@ while True:
         withdrawn_profit = item.get("withdrawnProfit")
         purchase_price = item.get("purchasePrice")
         image_url = item.get("productImage", {}).get("photo", {}).get("800", {}).get("high", "N/A")
-        from datetime import datetime, timedelta  # Fayl boshida 'timedelta' ham import qilingan bo'lishi kerak
-        date = (datetime.fromtimestamp(item.get("date", 0) / 1000) + timedelta(hours=5)).strftime('%Y-%m-%d %H:%M')
-
+        date = datetime.fromtimestamp(item.get("date", 0) / 1000).strftime('%Y-%m-%d %H:%M')
 
         rows.append([
             order_id, status, shopId, title, sell_price, commission, logistic_fee, amount,

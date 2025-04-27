@@ -30,8 +30,8 @@ def process_last_hour_orders():
     # hour_info sahifani tozalab, yangi sarlavha yozamiz
     hour_info_sheet.clear()
     hour_info_sheet.append_row([
-        "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn", 
-        "SKU", "Sold Quantity"
+        "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn Profit", 
+        "SKU", "Available Quantity", "Sold Quantity"
     ])
 
     orders_data = orders_sheet.get_all_values()
@@ -50,15 +50,17 @@ def process_last_hour_orders():
             if one_hour_ago <= order_time <= current_time:
                 quantity = int(row[7])         # Sold quantity
                 sell_price = float(row[4])     # Sale price
-                withdrawn_profit = float(row[8])  # Withdrawn profit
-                sku = row[3]
+                withdrawn_profit = float(row[10])  # Withdrawn profit
+                sku = row[3]                   # SKU code
+                available_qty = int(row[8])    # Available quantity
 
                 total_products_sold += quantity
                 total_sales += sell_price * quantity
-                total_withdrawn += withdrawn_profit * quantity
+                total_withdrawn_profit += withdrawn_profit * quantity
 
                 # Ma'lumotlarni yig'amiz
                 sku_sales[sku]["sold_qty"] += quantity
+                sku_sales[sku]["available_qty"] = available_qty
 
         except Exception as e:
             print(f"⚠️ Ma'lumotni o'qishda xatolik: {e}")

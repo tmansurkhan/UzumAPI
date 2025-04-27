@@ -1,18 +1,19 @@
-name: Har soatlik Uzum API hisobot
+name: Uzum API Integration
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Har soat boshida ishga tushadi (UTC)
-  workflow_dispatch:     # Qo'lda "Run workflow" bosish imkoniyati
+    - cron: "0 * * * *"  # Har soatda ishga tushadi
+  workflow_dispatch:  # Qo'lda ishga tushirish imkoniyati
 
 jobs:
-  send_hour_info:
+  run-python-scripts:
     runs-on: ubuntu-latest
 
     env:
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      UZUM_API_TOKEN: ${{ secrets.UZUM_API_TOKEN }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
 
     steps:
       - name: Repositoryni yuklab olish
@@ -28,5 +29,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install gspread google-auth requests pandas matplotlib
 
-      - name: Har soatlik hisobotni yuborish
+      - name: Service account faylini yaratish
+        run: echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > service_account.json
+
+      - name: Uzum API skriptini ishga tushurish
+        run: |
+          python main.py
+          python hour.py
+
+      - name: Har soatlik hisobotni yuborish (Telegram)
         run: python telegramhour.py

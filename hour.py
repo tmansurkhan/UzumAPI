@@ -31,7 +31,7 @@ def process_last_hour_orders():
     hour_info_sheet.clear()
     hour_info_sheet.append_row([
         "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn Profit", 
-        "SKU", "Available Quantity", "Sold Quantity"
+        "SKU", "Withdrawn", "Sold Quantity"
     ])
 
     orders_data = orders_sheet.get_all_values()
@@ -50,9 +50,9 @@ def process_last_hour_orders():
             if one_hour_ago <= order_time <= current_time:
                 quantity = int(row[7])         # Sold quantity
                 sell_price = float(row[4])     # Sale price
-                withdrawn_profit = float(row[10])  # Withdrawn profit
+                withdrawn_profit = float(row[8])  # Withdrawn profit
                 sku = row[3]                   # SKU code
-                available_qty = int(row[8])    # Available quantity
+                available_qty = int(row[7])    # Available quantity
 
                 total_products_sold += quantity
                 total_sales += sell_price * quantity

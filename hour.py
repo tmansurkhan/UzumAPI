@@ -68,9 +68,11 @@ def process_last_hour_orders():
 
     time_range = f"{one_hour_ago.strftime('%Y-%m-%d %H:%M')} - {current_time.strftime('%Y-%m-%d %H:%M')}"
 
+    rows_to_write = []
+
     if total_products_sold > 0:
         # Birinchi qator: umumiy statistikani yozamiz
-        hour_info_sheet.append_row([
+        rows_to_write.append([
             time_range,
             total_products_sold,
             total_sales,
@@ -78,21 +80,24 @@ def process_last_hour_orders():
             "", "", ""
         ])
 
-        # Har bir SKU uchun qator yozamiz
+        # Har bir SKU uchun alohida qator tayyorlaymiz
         for sku, data in sku_sales.items():
-            hour_info_sheet.append_row([
-                "", "", "", "", 
+            rows_to_write.append([
+                "", "", "", "",
                 sku,
                 data["available_qty"],
                 data["sold_qty"]
             ])
     else:
-        # Hech qanday sotuv bo'lmasa
-        hour_info_sheet.append_row([
+        # Agar sotuv bo'lmasa
+        rows_to_write.append([
             time_range, 0, 0, 0, "No sales", 0, 0
         ])
 
-    print("✅ So'nggi 1 soatlik ma'lumotlar 'hour_info' sahifasiga muvaffaqiyatli yozildi.")
+    # Barcha qatorlarni bir martada yozamiz
+    hour_info_sheet.append_rows(rows_to_write, value_input_option="USER_ENTERED")
+
+    print("✅ So'nggi 1 soatlik ma'lumotlar 'hour_info' sahifasiga tartibli yozildi.")
 
 # --- 4. Asosiy ishga tushirish ---
 if __name__ == "__main__":

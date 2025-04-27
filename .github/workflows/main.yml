@@ -28,6 +28,7 @@ jobs:
       - name: Run the script
         run: |
           python main.py
+          python hour.py
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           UZUM_API_TOKEN: ${{ secrets.UZUM_API_TOKEN }}

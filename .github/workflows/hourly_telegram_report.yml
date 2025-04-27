@@ -2,31 +2,32 @@ name: Hourly Telegram Report (GMT+5)
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Har soat avtomatik ishga tushadi (UTC bo‘yicha)
-  workflow_dispatch:      # Qo'lda ishga tushirish imkoniyati
+    - cron: '0 * * * *' # Har soat UTC bo'yicha ishga tushadi
+  workflow_dispatch: # Qo'lda ishga tushurish ham mumkin
 
 jobs:
   send_report:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 🔹 Kodni yuklab olish
+    - name: 🔹 Repositoryni yuklab olish
       uses: actions/checkout@v4
 
-    - name: 🔹 Python o'rnatish va kutubxonalar
+    - name: 🔹 Python va kutubxonalarni ornatish
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    - run: |
+
+    - name: 🔹 Zarur kutubxonalarni ornatish
+      run: |
         pip install --upgrade pip
         pip install gspread google-auth requests
 
-    - name: 🔹 So'nggi 1 soatlik xabar yuborish (va vaqtni chiqarish)
+    - name: 🔹 Xabar yuborish
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
-        echo "▶️ Ishga tushgan vaqt (UTC): $(date -u)"
         echo "▶️ Ishga tushgan vaqt (GMT+5): $(TZ='Asia/Tashkent' date)"
-        python hour.py
+        python telegramhour.py

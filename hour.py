@@ -42,7 +42,7 @@ def process_last_hour_orders():
     total_products_sold = 0
     total_sales = 0
     total_withdrawn_profit = 0
-    sku_sales = defaultdict(lambda: {"sold_qty": 0, "available_qty": 0})
+    sku_sales = defaultdict(lambda: {"sold_qty": 0, "withdrawn": 0})
 
     for row in orders_data[1:]:
         try:
@@ -52,7 +52,7 @@ def process_last_hour_orders():
                 sell_price = float(row[4])     # Sale price
                 withdrawn_profit = float(row[8])  # Withdrawn profit
                 sku = row[3]                   # SKU code
-                available_qty = int(row[7])    # Available quantity
+                withdrawn = int(row[7])    # Available quantity
 
                 total_products_sold += quantity
                 total_sales += sell_price * quantity
@@ -60,7 +60,7 @@ def process_last_hour_orders():
 
                 # Ma'lumotlarni yig'amiz
                 sku_sales[sku]["sold_qty"] += quantity
-                sku_sales[sku]["available_qty"] = available_qty
+                sku_sales[sku]["withdrawn"] = withdrawn
 
         except Exception as e:
             print(f"⚠️ Ma'lumotni o'qishda xatolik: {e}")

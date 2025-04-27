@@ -31,7 +31,7 @@ shop_sheet.clear()
 
 shop_url = "https://api-seller.uzum.uz/api/seller-openapi/v1/shops"
 headers = {
-    "Authorization": uzum_api_token,
+    "Authorization": "OsfBx+VPNzoViSLx20H8RcTEKqJtoMOEzDokHG3sqN8=",
     "Accept": "*/*"
 }
 

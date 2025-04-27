@@ -1,4 +1,4 @@
-# --- Telegram va Google Sheets kutubxonalarini chaqiramiz ---
+# --- Kutubxonalarni chaqirish ---
 import os
 import json
 import gspread
@@ -13,33 +13,28 @@ SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
-spreadsheet = client.open("Uzum API")  # Google Sheets fayl nomi
+spreadsheet = client.open("Uzum API")  # Sheets fayl nomi
 
-# --- Telegram bot uchun sozlamalar ---
+# --- Telegram token va chat ID ---
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-def send_telegram_message(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "HTML"
-    }
-    response = requests.post(url, json=payload)
-    if response.status_code == 200:
-        print("✅ Matnli xabar yuborildi!")
-    else:
-        print(f"⚠️ Matn yuborishda xatolik: {response.text}")
-
-def send_telegram_photo(photo_path):
+def send_photo_with_caption(photo_path, caption):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-    with open(photo_path, 'rb') as photo:
-        response = requests.post(url, files={'photo': photo}, data={'chat_id': TELEGRAM_CHAT_ID})
-    if response.status_code == 200:
-        print("✅ Rasm yuborildi!")
-    else:
-        print(f"⚠️ Rasm yuborishda xatolik: {response.text}")
+    with open(photo_path, "rb") as photo_file:
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "caption": caption,
+            "parse_mode": "HTML"
+        }
+        files = {
+            "photo": photo_file
+        }
+        response = requests.post(url, data=payload, files=files)
+        if response.status_code == 200:
+            print("✅ Rasm va matn yuborildi!")
+        else:
+            print(f"⚠️ Xatolik: {response.text}")
 
 def fetch_and_send_hour_info():
     hour_info_sheet = spreadsheet.worksheet("hour_info")
@@ -53,39 +48,40 @@ def fetch_and_send_hour_info():
     time_range = values[1][0] if len(values[1]) > 0 else "Noma'lum"
     total_products_sold = values[1][1] if len(values[1]) > 1 else "0"
     total_sales = values[1][2] if len(values[1]) > 2 else "0"
-    total_withdrawn = values[1][3] if len(values[1]) > 3 else "0"  # D2
+    total_withdrawn = values[1][3] if len(values[1]) > 3 else "0"
 
-    # --- 1. Matnli xabar tayyorlaymiz ---
-    message = f"""🕰 <b>Vaqt oralig'i:</b> {time_range}
-📦 <b>Jami mahsulotlar:</b> {total_products_sold} dona
-💰 <b>Jami savdo:</b> {total_sales} so'm
-🏦 <b>Jami yechib olishga:</b> {total_withdrawn} so'm"""
+    # SKU sotuv ma'lumotlarini pandas orqali o'qib olamiz
+    sku_data = values[2:]  # 3-qator va pastdagi qatorlar
+    sku_df = pd.DataFrame(sku_data, columns=["", "", "", "", "SKU", "Withdrawn", "Sold"])
 
-    send_telegram_message(message)
-
-    # --- 2. E:G ustunlar ma'lumotlarini olib rasmga aylantiramiz ---
-    headers = values[0][4:7]  # E, F, G ustunlar nomlari
-    rows = [row[4:7] for row in values[1:] if len(row) >= 7]
-
-    if not rows:
-        print("⚠️ SKU sotuv ma'lumotlari topilmadi.")
+    if sku_df.empty:
+        print("⚠️ SKU ma'lumotlari topilmadi.")
         return
 
-    df = pd.DataFrame(rows, columns=headers)
+    # Faqat kerakli ustunlarni olish
+    plot_df = sku_df[["SKU", "Withdrawn", "Sold"]].dropna()
 
-    # DataFrame'ni rasmga chizamiz
-    fig, ax = plt.subplots(figsize=(8, len(df) * 0.6))
-    ax.axis('tight')
-    ax.axis('off')
-    table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
-    fig.tight_layout()
+    # Rasm faylini yaratamiz
+    plt.figure(figsize=(8, 4))
+    plt.axis('tight')
+    plt.axis('off')
+    table = plt.table(cellText=plot_df.values, colLabels=plot_df.columns, loc='center', cellLoc='center')
+    table.scale(1, 1.5)
+    plt.tight_layout()
 
-    image_path = "hour_table.png"
-    plt.savefig(image_path, dpi=200)
+    img_path = "sku_table.png"
+    plt.savefig(img_path, dpi=200)
+    plt.close()
 
-    # Rasmni Telegramga yuboramiz
-    send_telegram_photo(image_path)
+    # Telegramga yuboriladigan matn
+    caption = f"""🕰 <b>Vaqt oralig'i:</b> {time_range}
+📦 <b>Jami mahsulotlar:</b> {total_products_sold} dona
+💰 <b>Jami savdo:</b> {total_sales} so'm
+🏦 <b>Jami yechib olingan:</b> {total_withdrawn} so'm"""
 
-# --- Asosiy ishga tushirish ---
+    # Rasm + Text birga yuborish
+    send_photo_with_caption(img_path, caption)
+
+# --- Asosiy ---
 if __name__ == "__main__":
     fetch_and_send_hour_info()

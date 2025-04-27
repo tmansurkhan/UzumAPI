@@ -31,7 +31,7 @@ def process_last_hour_orders():
     hour_info_sheet.clear()
     hour_info_sheet.append_row([
         "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn Profit", 
-        "SKU", "Withdrawn", "Sold Quantity"
+        "SKU", "Withdrawn Quantity", "Sold Quantity"
     ])
 
     orders_data = orders_sheet.get_all_values()
@@ -42,7 +42,7 @@ def process_last_hour_orders():
     total_products_sold = 0
     total_sales = 0
     total_withdrawn_profit = 0
-    sku_sales = defaultdict(lambda: {"sold_qty": 0, "withdrawn": 0})
+    sku_sales = defaultdict(lambda: {"sold_qty": 0, "withdrawn_qty": 0})
 
     for row in orders_data[1:]:
         try:
@@ -50,9 +50,9 @@ def process_last_hour_orders():
             if one_hour_ago <= order_time <= current_time:
                 quantity = int(row[7])         # Sold quantity
                 sell_price = float(row[4])     # Sale price
-                withdrawn_profit = float(row[8])  # Withdrawn profit
+                withdrawn_profit = float(row[8])  # Withdrawn profit (summa)
                 sku = row[3]                   # SKU code
-                withdrawn = int(row[7])    # Available quantity
+                withdrawn_qty = int(row[8])    # Withdrawn quantity (miqdor) - TASDIQLAB BILISH KERAK!
 
                 total_products_sold += quantity
                 total_sales += sell_price * quantity
@@ -60,7 +60,7 @@ def process_last_hour_orders():
 
                 # Ma'lumotlarni yig'amiz
                 sku_sales[sku]["sold_qty"] += quantity
-                sku_sales[sku]["withdrawn"] = withdrawn
+                sku_sales[sku]["withdrawn_qty"] += withdrawn_qty
 
         except Exception as e:
             print(f"⚠️ Ma'lumotni o'qishda xatolik: {e}")
@@ -85,7 +85,7 @@ def process_last_hour_orders():
             rows_to_write.append([
                 "", "", "", "",
                 sku,
-                data["withdrawn"],
+                data["withdrawn_qty"],
                 data["sold_qty"]
             ])
     else:

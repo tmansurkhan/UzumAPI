@@ -94,7 +94,9 @@ while True:
         withdrawn_profit = item.get("withdrawnProfit")
         purchase_price = item.get("purchasePrice")
         image_url = item.get("productImage", {}).get("photo", {}).get("800", {}).get("high", "N/A")
-        date = datetime.fromtimestamp(item.get("date", 0) / 1000).strftime('%Y-%m-%d %H:%M')
+        from datetime import datetime, timedelta  # Fayl boshida 'timedelta' ham import qilingan bo'lishi kerak
+        date = (datetime.fromtimestamp(item.get("date", 0) / 1000) + timedelta(hours=5)).strftime('%Y-%m-%d %H:%M')
+
 
         rows.append([
             order_id, status, shopId, title, sell_price, commission, logistic_fee, amount,

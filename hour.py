@@ -31,7 +31,7 @@ def process_last_hour_orders():
     hour_info_sheet.clear()
     hour_info_sheet.append_row([
         "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn Profit", 
-        "SKU", "Withdrawn "Sold Quantity"
+        "SKU", "Sold Quantity"
     ])
 
     orders_data = orders_sheet.get_all_values()

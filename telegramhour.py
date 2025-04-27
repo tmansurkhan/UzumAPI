@@ -45,8 +45,8 @@ def fetch_and_send_hour_info():
 
     # Telegramga yuboriladigan xabar matni
     message = f"""🕰 <b>Vaqt oralig'i:</b> {time_range}
-📦 <b>Umumiy sotilgan mahsulotlar:</b> {total_products_sold} dona
-💰 <b>Umumiy sotuv summasi:</b> {total_sales} so'm"""
+📦 <b>Jami mahsulotlar:</b> {total_products_sold} dona
+💰 <b>Jami savdo:</b> {total_sales} so'm"""
 
     send_telegram_message(message)
 

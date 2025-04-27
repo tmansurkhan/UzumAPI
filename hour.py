@@ -30,7 +30,7 @@ def process_last_hour_orders():
     # hour_info sahifani tozalab, yangi sarlavha yozamiz
     hour_info_sheet.clear()
     hour_info_sheet.append_row([
-        "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn Profit", 
+        "Time Range", "Total Products Sold", "Total Sales", "Total Withdrawn", 
         "SKU", "Sold Quantity"
     ])
 
@@ -55,7 +55,7 @@ def process_last_hour_orders():
 
                 total_products_sold += quantity
                 total_sales += sell_price * quantity
-                total_withdrawn_profit += withdrawn_profit * quantity
+                total_withdrawn += withdrawn_profit * quantity
 
                 # Ma'lumotlarni yig'amiz
                 sku_sales[sku]["sold_qty"] += quantity

@@ -1,4 +1,4 @@
-name: Uzum API Integration
+name: Uzum API main
 
 on:
   schedule:

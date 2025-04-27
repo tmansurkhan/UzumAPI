@@ -85,7 +85,7 @@ def process_last_hour_orders():
             rows_to_write.append([
                 "", "", "", "",
                 sku,
-                data["available_qty"],
+                data["withdrawn"],
                 data["sold_qty"]
             ])
     else:

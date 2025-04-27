@@ -12,7 +12,6 @@ SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 
 # GitHub Secrets'dan service_account.json va Uzum API tokenini olish
 service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
-uzum_api_token = os.environ["UZUM_API_TOKEN"]
 
 # Google Sheets bilan ulanish
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)

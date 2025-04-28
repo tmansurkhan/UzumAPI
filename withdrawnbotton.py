@@ -26,8 +26,18 @@ END_DATE = os.getenv('END_DATE')
 if not START_DATE or not END_DATE:
     raise ValueError("Start va End date kiritilmagan!")
 
+# --- Start va End date ni olish ---
+START_DATE = os.getenv('START_DATE')
+END_DATE = os.getenv('END_DATE')
+
+if not START_DATE or not END_DATE:
+    raise ValueError("Start va End date kiritilmagan!")
+
 start_date = datetime.strptime(START_DATE, "%Y-%m-%d")
 end_date = datetime.strptime(END_DATE, "%Y-%m-%d")
+
+# End date ni kun oxiriga o'zgartirish
+end_date = end_date.replace(hour=23, minute=59, second=59)
 
 # --- Telegramga xabar yuborish funksiyasi ---
 def send_message(text):

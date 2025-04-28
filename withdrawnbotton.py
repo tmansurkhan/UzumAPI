@@ -26,13 +26,6 @@ END_DATE = os.getenv('END_DATE')
 if not START_DATE or not END_DATE:
     raise ValueError("Start va End date kiritilmagan!")
 
-# --- Start va End date ni olish ---
-START_DATE = os.getenv('START_DATE')
-END_DATE = os.getenv('END_DATE')
-
-if not START_DATE or not END_DATE:
-    raise ValueError("Start va End date kiritilmagan!")
-
 start_date = datetime.strptime(START_DATE, "%Y-%m-%d")
 end_date = datetime.strptime(END_DATE, "%Y-%m-%d")
 
@@ -80,7 +73,7 @@ def generate_report():
     filtered_df = df[(df[12] >= start_date) & (df[12] <= end_date)]
 
     if filtered_df.empty:
-        send_message(f"⚠️ {START_DATE} dan {END_DATE} gacha hisobot uchun ma'lumot topilmadi.")
+        send_message(f"⚠️ {START_DATE} dan {END_DATE} oralig'ida ma'lumot topilmadi.")
         return
 
     # Zarur ustunlarni numeric qilish

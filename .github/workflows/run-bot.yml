@@ -1,0 +1,29 @@
+name: Run Telegram Bot manually
+
+on:
+  workflow_dispatch:  # Qo'lda ishga tushirish uchun
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Kodni klon qilish
+      uses: actions/checkout@v3
+
+    - name: Python o'rnatish
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Kutubxonalarni o'rnatish
+      run: |
+        pip install -r requirements.txt
+
+    - name: Botni ishga tushirish
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      run: |
+        python withdrawnbotton.py

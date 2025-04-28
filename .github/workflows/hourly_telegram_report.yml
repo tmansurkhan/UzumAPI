@@ -2,7 +2,7 @@ name: Uzum API main
 
 on:
   schedule:
-    - cron: "0 * * * *"  # Har soatda ishga tushadi
+    - cron: "00 * * * *"  # Har soatda ishga tushadi
   workflow_dispatch:  # Qo'lda ishga tushirish imkoniyati
 
 jobs:

@@ -1,17 +1,26 @@
-name: Run Telegram Bot manually
+name: Run Telegram Bot manually with date input
 
 on:
-  workflow_dispatch:  # Qo'lda ishga tushirish uchun
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Hisobot boshlanish sanasi (YYYY-MM-DD)'
+        required: true
+        default: '2025-04-20'
+      end_date:
+        description: 'Hisobot tugash sanasi (YYYY-MM-DD)'
+        required: true
+        default: '2025-04-27'
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Kodni klon qilish
+    - name: Kodni yuklab olish
       uses: actions/checkout@v3
 
-    - name: Python o'rnatish
+    - name: Python versiyasini o'rnatish
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
@@ -20,10 +29,12 @@ jobs:
       run: |
         pip install -r requirements.txt
 
-    - name: Botni ishga tushirish
+    - name: Botni ishga tushurish
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+        START_DATE: ${{ github.event.inputs.start_date }}
+        END_DATE: ${{ github.event.inputs.end_date }}
       run: |
         python withdrawnbotton.py

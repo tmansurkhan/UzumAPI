@@ -29,9 +29,6 @@ if not START_DATE or not END_DATE:
 start_date = datetime.strptime(START_DATE, "%Y-%m-%d")
 end_date = datetime.strptime(END_DATE, "%Y-%m-%d")
 
-# End date ni kun oxiriga o'zgartirish
-end_date = end_date.replace(hour=23, minute=59, second=59)
-
 # --- Telegramga xabar yuborish funksiyasi ---
 def send_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -73,7 +70,7 @@ def generate_report():
     filtered_df = df[(df[12] >= start_date) & (df[12] <= end_date)]
 
     if filtered_df.empty:
-        send_message(f"⚠️ {START_DATE} dan {END_DATE} oralig'ida ma'lumot topilmadi.")
+        send_message(f"⚠️ {START_DATE} dan {END_DATE} gacha hisobot uchun ma'lumot topilmadi.")
         return
 
     # Zarur ustunlarni numeric qilish

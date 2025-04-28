@@ -13,7 +13,7 @@ SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
-spreadsheet = client.open("Uzum API")  # Sizning Sheets faylingiz nomi
+spreadsheet = client.open("Uzum API")  # Sheets nomi
 
 # --- Telegram token va chat ID ---
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
@@ -46,47 +46,48 @@ def send_message(text):
 # --- Hisobot tayyorlash funksiyasi ---
 def generate_report():
     orders_sheet = spreadsheet.worksheet("Orders")
-    data = orders_sheet.get_all_values()
+    rows = orders_sheet.get_all_values()
 
-    if len(data) < 2:
+    if len(rows) < 2:
         print("⚠️ 'Orders' jadvalida ma'lumot topilmadi.")
         return
 
-    header = data[0]
-    rows = data[1:]
+    # DataFrame yaratamiz (ustun sarlavhasiz)
+    df = pd.DataFrame(rows[1:], columns=None)
 
-    df = pd.DataFrame(rows, columns=header)
-
-    # Zarur ustunlarni olish
-    needed_columns = ['D', 'E', 'F', 'G', 'H', 'M']
-    if not all(col in df.columns for col in needed_columns):
-        raise ValueError("Sheetsda kerakli ustunlar topilmadi!")
+    # Indekslar bo'yicha ustunlar
+    # D => 3 (index 3) - SKU
+    # E => 4 (index 4) - Sotuv narxi
+    # F => 5 (index 5) - Komissiya
+    # G => 6 (index 6) - Logistika
+    # H => 7 (index 7) - Buyurtma soni
+    # M => 12 (index 12) - Buyurtma vaqti
 
     # Vaqt ustunini datetime formatga o'tkazish
-    df['M'] = pd.to_datetime(df['M'], format="%d.%m.%Y %H:%M")
+    df[12] = pd.to_datetime(df[12], format="%d.%m.%Y %H:%M", errors='coerce')
 
     # Sana oralig'iga qarab filterlash
-    filtered_df = df[(df['M'] >= start_date) & (df['M'] <= end_date)]
+    filtered_df = df[(df[12] >= start_date) & (df[12] <= end_date)]
 
     if filtered_df.empty:
         send_message(f"⚠️ {START_DATE} dan {END_DATE} gacha hisobot uchun ma'lumot topilmadi.")
         return
 
-    # Hisoblash
-    filtered_df['E'] = pd.to_numeric(filtered_df['E'], errors='coerce').fillna(0)
-    filtered_df['F'] = pd.to_numeric(filtered_df['F'], errors='coerce').fillna(0)
-    filtered_df['G'] = pd.to_numeric(filtered_df['G'], errors='coerce').fillna(0)
-    filtered_df['H'] = pd.to_numeric(filtered_df['H'], errors='coerce').fillna(0)
+    # Zarur ustunlarni numeric qilish
+    filtered_df[4] = pd.to_numeric(filtered_df[4], errors='coerce').fillna(0)  # Sotuv narxi
+    filtered_df[5] = pd.to_numeric(filtered_df[5], errors='coerce').fillna(0)  # Komissiya
+    filtered_df[6] = pd.to_numeric(filtered_df[6], errors='coerce').fillna(0)  # Logistika
+    filtered_df[7] = pd.to_numeric(filtered_df[7], errors='coerce').fillna(0)  # Buyurtma soni
 
-    total_sales = (filtered_df['E'] * filtered_df['H']).sum()
-    total_commission = (filtered_df['F'] * filtered_df['H']).sum()
-    total_logistics = (filtered_df['G'] * filtered_df['H']).sum()
-    total_orders = filtered_df['H'].sum()
+    total_sales = (filtered_df[4] * filtered_df[7]).sum()
+    total_commission = (filtered_df[5] * filtered_df[7]).sum()
+    total_logistics = (filtered_df[6] * filtered_df[7]).sum()
+    total_orders = filtered_df[7].sum()
 
-    # Top 3 SKU ni aniqlash
-    filtered_df['total_revenue'] = filtered_df['E'] * filtered_df['H']
+    # Top 3 SKU hisoblash
+    filtered_df['total_revenue'] = filtered_df[4] * filtered_df[7]
     top3_sku = (
-        filtered_df.groupby('D')['total_revenue']
+        filtered_df.groupby(3)['total_revenue']  # SKU ustuni
         .sum()
         .sort_values(ascending=False)
         .head(3)

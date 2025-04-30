@@ -18,6 +18,19 @@ spreadsheet = client.open("Uzum API")
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
+def pin_message(message_id):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/pinChatMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "message_id": message_id,
+        "disable_notification": True  # Xabar pinlanganda bildirishnoma yuborilmasin
+    }
+    response = requests.post(url, data=payload)
+    if response.status_code == 200:
+        print("📌 Xabar pin qilindi!")
+    else:
+        print(f"⚠️ Pin qilishda xatolik: {response.text}")
+
 def send_photo_with_caption(photo_path, caption):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     with open(photo_path, "rb") as photo_file:
@@ -30,6 +43,8 @@ def send_photo_with_caption(photo_path, caption):
         response = requests.post(url, data=payload, files=files)
         if response.status_code == 200:
             print("✅ Rasm va matn yuborildi!")
+            message_id = response.json()["result"]["message_id"]
+            pin_message(message_id)
         else:
             print(f"⚠️ Xatolik: {response.text}")
 
@@ -71,7 +86,7 @@ def fetch_and_send_daily_info():
             continue
 
         if quantity == 0:
-            continue  # Buyurtma yo‘q bo‘lsa, bu qatordan o‘tamiz
+            continue
 
         total_quantity += quantity
         total_sales += price
@@ -85,12 +100,12 @@ def fetch_and_send_daily_info():
         print("❌ Kechagi sana bo‘yicha hech qanday ma’lumot topilmadi.")
         return
 
-    # DataFrame yaratib, SKU bo‘yicha guruhlab yig'indisini olish
+    # DataFrame yaratib, SKU bo‘yicha guruhlash
     df = pd.DataFrame(filtered_rows, columns=["SKU", "Soni", "Narxi"])
     df_grouped = df.groupby("SKU", as_index=False).sum()
 
-    # Rasmga chiqarish
-    plt.figure(figsize=(8, 4 + len(df_grouped)*0.25))  # Dinamik balandlik
+    # Jadvalni rasmga chiqarish
+    plt.figure(figsize=(8, 4 + len(df_grouped) * 0.25))  # Jadval qatoriga qarab balandlik
     plt.axis('tight')
     plt.axis('off')
     table = plt.table(cellText=df_grouped.values, colLabels=df_grouped.columns, loc='center', cellLoc='center')

@@ -78,18 +78,22 @@ def fetch_and_send_daily_info():
         total_withdrawn += withdrawn
         total_profit += withdrawn - cost
 
-        filtered_rows.append([row[3], quantity, price])  # D ustun — SKU (index 3)
+        sku = row[3]  # D ustun — SKU (index 3)
+        filtered_rows.append([sku, quantity, price])
 
     if not filtered_rows:
         print("❌ Kechagi sana bo‘yicha hech qanday ma’lumot topilmadi.")
         return
 
-    # Rasmga chiqarish uchun jadval tayyorlash
+    # DataFrame yaratib, SKU bo‘yicha guruhlab yig'indisini olish
     df = pd.DataFrame(filtered_rows, columns=["SKU", "Soni", "Narxi"])
-    plt.figure(figsize=(8, 4))
+    df_grouped = df.groupby("SKU", as_index=False).sum()
+
+    # Rasmga chiqarish
+    plt.figure(figsize=(8, 4 + len(df_grouped)*0.25))  # Dinamik balandlik
     plt.axis('tight')
     plt.axis('off')
-    table = plt.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')
+    table = plt.table(cellText=df_grouped.values, colLabels=df_grouped.columns, loc='center', cellLoc='center')
     table.scale(1, 1.5)
     plt.tight_layout()
     img_path = "daily_summary.png"

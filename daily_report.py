@@ -31,19 +31,21 @@ def fetch_and_send_daily_report():
     # Pandas DataFrame yaratish
     df = pd.DataFrame(values[1:], columns=values[0])
 
-    # Sana ustunini to'g'ri formatlash
-    df['Sana'] = pd.to_datetime(df['L'], format='%Y-%m-%d %H:%M', errors='coerce').dt.date
-
     # Kecha sanasini olish
     yesterday_date = get_yesterday_date()
 
-    # Faqat kecha bo'lgan ma'lumotlarni tanlang
+    # DataFrame'da sanani to'g'ri formatlash
+    # 'L' ustuni (index: 11) va sanani to'g'ri formatlash
+    df['Sana'] = pd.to_datetime(df.iloc[:, 11], format='%Y-%m-%d %H:%M', errors='coerce').dt.date
+
+    # Faqat kecha bo'yicha ma'lumotlarni tanlang
     df_yesterday = df[df['Sana'] == yesterday_date]
 
     # Agar kecha bo'yicha ma'lumotlar mavjud bo'lsa
     if not df_yesterday.empty:
-        total_sales = df_yesterday['I'].sum()  # 'I' ustuni sotilgan narx
-        total_cost = df_yesterday['K'].sum()   # 'K' ustuni xarajatlar
+        # Sotilgan narx va xarajatlar ustunlarini (index: 8 va 10) tanlang
+        total_sales = df_yesterday.iloc[:, 8].sum()  # 'I' ustuni sotilgan narx
+        total_cost = df_yesterday.iloc[:, 10].sum()   # 'K' ustuni xarajatlar
         profit = total_sales - total_cost
 
         # Grafik yaratish

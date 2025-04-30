@@ -1,128 +1,100 @@
 import os
 import json
-import gspread
 import requests
-import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+import gspread
 from google.oauth2.service_account import Credentials
+from collections import defaultdict
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
-# --- Google Sheets'ga ulanish ---
-SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
-creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
-client = gspread.authorize(creds)
-spreadsheet = client.open("Uzum API")
+# 1. Load environment variables from .env file
+load_dotenv()
 
-# --- Telegram token va chat ID ---
-TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+# 2. Get variables from environment
+uzum_api_token = os.getenv("UZUM_API_TOKEN")
+telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-def pin_message(message_id):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/pinChatMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "message_id": message_id,
-        "disable_notification": True
-    }
-    response = requests.post(url, data=payload)
-    if response.status_code == 200:
-        print("📌 Xabar pin qilindi!")
-    else:
-        print(f"⚠️ Pin qilishda xatolik: {response.text}")
+# 3. Load Google Service Account credentials from JSON string in .env
+google_creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+google_creds_dict = json.loads(google_creds_json)
+scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+credentials = Credentials.from_service_account_info(google_creds_dict, scopes=scopes)
+client = gspread.authorize(credentials)
 
-def send_photo_with_caption(photo_path, caption):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-    with open(photo_path, "rb") as photo_file:
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "caption": caption,
-            "parse_mode": "HTML"
-        }
-        files = {"photo": photo_file}
-        response = requests.post(url, data=payload, files=files)
-        if response.status_code == 200:
-            print("✅ Rasm va matn yuborildi!")
-            message_id = response.json()["result"]["message_id"]
-            pin_message(message_id)
-        else:
-            print(f"⚠️ Xatolik: {response.text}")
+# 4. Open Google Sheet and worksheet
+spreadsheet = client.open("Orders")
+worksheet = spreadsheet.sheet1
+data = worksheet.get_all_values()
 
-def fetch_and_send_daily_info():
-    orders_sheet = spreadsheet.worksheet("Orders")
-    values = orders_sheet.get_all_values()
+# 5. Column mapping
+header = data[0]
+rows = data[1:]
 
-    if len(values) < 2:
-        print("⚠️ Ma'lumotlar topilmadi.")
-        return
+column_indices = {col_name: idx for idx, col_name in enumerate(header)}
+date_col = column_indices.get("L")
+sku_col = column_indices.get("D")
+price_col = column_indices.get("E")
+quantity_col = column_indices.get("H")
+cost_price_col = column_indices.get("K")
+sold_price_col = column_indices.get("I")
 
-    data = values[1:]
+# 6. Filter for today's date
+today_str = datetime.now().strftime("%d.%m.%Y")
+today_orders = [row for row in rows if len(row) > date_col and today_str in row[date_col]]
 
-    yesterday = (datetime.today() - timedelta(days=1)).date()
+# 7. Calculate metrics
+sku_data = defaultdict(lambda: {"quantity": 0, "sales": 0, "profit": 0})
 
-    total_quantity = 0
+for row in today_orders:
+    try:
+        sku = row[sku_col].split("-")[0]  # Extract SKU prefix
+        quantity = int(row[quantity_col]) if row[quantity_col] else 0
+        cost_price = int(row[cost_price_col]) if row[cost_price_col] else 0
+        sold_price = int(row[sold_price_col]) if row[sold_price_col] else 0
+
+        profit = (sold_price - cost_price) * quantity
+        sales = sold_price * quantity
+
+        sku_data[sku]["quantity"] += quantity
+        sku_data[sku]["sales"] += sales
+        sku_data[sku]["profit"] += profit
+    except Exception as e:
+        print(f"Error processing row: {row} -> {e}")
+
+# 8. Prepare Telegram message
+if sku_data:
+    message_lines = [f"📦 *Kunlik hisobot* — *{today_str}*"]
     total_sales = 0
-    total_withdrawn = 0
     total_profit = 0
-    filtered_rows = []
 
-    for row in data:
-        try:
-            date_str = row[12].split()[0]  # M ustun — index 12
-            row_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        except (IndexError, ValueError):
-            continue
+    for sku, values in sku_data.items():
+        message_lines.append(
+            f"🔹 *{sku}*\n"
+            f"   - Soni: {values['quantity']}\n"
+            f"   - Savdo: {values['sales']} so'm\n"
+            f"   - Foyda: {values['profit']} so'm"
+        )
+        total_sales += values["sales"]
+        total_profit += values["profit"]
 
-        if row_date != yesterday:
-            continue
+    message_lines.append(f"\n💰 *Jami savdo:* {total_sales} so'm")
+    message_lines.append(f"📈 *Jami foyda:* {total_profit} so'm")
 
-        try:
-            quantity = int(row[7]) if row[7] else 0       # H ustun — index 7
-            price = int(row[4]) if row[4] else 0          # E ustun — index 4
-            withdrawn = int(row[8]) if row[8] else 0      # I ustun — index 8
-            cost = int(row[10]) if row[10] else 0         # K ustun — index 10
-        except (IndexError, ValueError):
-            continue
+    message = "\n".join(message_lines)
 
-        if quantity == 0:
-            continue
+    # 9. Send message via Telegram
+    telegram_url = f"https://api.telegram.org/bot{telegram_bot_token}/sendMessage"
+    payload = {
+        "chat_id": telegram_chat_id,
+        "text": message,
+        "parse_mode": "Markdown"
+    }
+    response = requests.post(telegram_url, json=payload)
 
-        total_quantity += quantity
-        total_sales += price
-        total_withdrawn += withdrawn
-        total_profit += withdrawn - cost
-
-        sku = row[3]  # D ustun — SKU (index 3)
-        filtered_rows.append([sku, quantity, price])
-
-    if not filtered_rows:
-        print("❌ Kechagi sana bo‘yicha hech qanday ma’lumot topilmadi.")
-        return
-
-    # DataFrame yaratib, SKU bo‘yicha guruhlab va kamayish tartibida saralab olish
-    df = pd.DataFrame(filtered_rows, columns=["SKU", "Soni", "Narxi"])
-    df_grouped = df.groupby("SKU", as_index=False).sum()
-    df_grouped = df_grouped.sort_values(by="Narxi", ascending=False)
-
-    # Jadvalni rasmga chiqarish
-    plt.figure(figsize=(8, 4 + len(df_grouped) * 0.25))
-    plt.axis('tight')
-    plt.axis('off')
-    table = plt.table(cellText=df_grouped.values, colLabels=df_grouped.columns, loc='center', cellLoc='center')
-    table.scale(1, 1.5)
-    plt.tight_layout()
-    img_path = "daily_summary.png"
-    plt.savefig(img_path, dpi=200)
-    plt.close()
-
-    caption = f"""🗓 <b>Sana:</b> {yesterday.strftime('%Y-%m-%d')}
-📦 <b>Jami sotilgan mahsulotlar:</b> {total_quantity} dona
-💰 <b>Jami tushum:</b> {total_sales} so'm
-🏦 <b>Jami yechilgan:</b> {total_withdrawn} so'm
-📈 <b>Sof foyda:</b> {total_profit} so'm"""
-
-    send_photo_with_caption(img_path, caption)
-
-# --- Asosiy ---
-if __name__ == "__main__":
-    fetch_and_send_daily_info()
+    if response.status_code == 200:
+        print("✅ Hisobot Telegramga yuborildi!")
+    else:
+        print("❌ Telegramga yuborishda xatolik:", response.text)
+else:
+    print("📭 Bugungi kun uchun hech qanday buyurtma topilmadi.")

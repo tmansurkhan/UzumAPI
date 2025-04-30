@@ -23,7 +23,7 @@ def pin_message(message_id):
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "message_id": message_id,
-        "disable_notification": True  # Xabar pinlanganda bildirishnoma yuborilmasin
+        "disable_notification": True
     }
     response = requests.post(url, data=payload)
     if response.status_code == 200:
@@ -56,9 +56,8 @@ def fetch_and_send_daily_info():
         print("⚠️ Ma'lumotlar topilmadi.")
         return
 
-    data = values[1:]  # Birinchi qator - sarlavhalar
+    data = values[1:]
 
-    # Kechagi sana
     yesterday = (datetime.today() - timedelta(days=1)).date()
 
     total_quantity = 0
@@ -100,12 +99,13 @@ def fetch_and_send_daily_info():
         print("❌ Kechagi sana bo‘yicha hech qanday ma’lumot topilmadi.")
         return
 
-    # DataFrame yaratib, SKU bo‘yicha guruhlash
+    # DataFrame yaratib, SKU bo‘yicha guruhlab va kamayish tartibida saralab olish
     df = pd.DataFrame(filtered_rows, columns=["SKU", "Soni", "Narxi"])
     df_grouped = df.groupby("SKU", as_index=False).sum()
+    df_grouped = df_grouped.sort_values(by="Soni", ascending=False)
 
     # Jadvalni rasmga chiqarish
-    plt.figure(figsize=(8, 4 + len(df_grouped) * 0.25))  # Jadval qatoriga qarab balandlik
+    plt.figure(figsize=(8, 4 + len(df_grouped) * 0.25))
     plt.axis('tight')
     plt.axis('off')
     table = plt.table(cellText=df_grouped.values, colLabels=df_grouped.columns, loc='center', cellLoc='center')

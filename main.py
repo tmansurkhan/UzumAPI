@@ -1,32 +1,33 @@
 import os
 import json
+import time
 import requests
 import gspread
+from datetime import datetime, timedelta
 from google.oauth2.service_account import Credentials
 from collections import defaultdict
-from datetime import datetime
-import time
+from dotenv import load_dotenv
 
-# --- 0. Google Sheets'ga ulanish ---
-SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+# --- 0. Muhit o‘zgaruvchilarini yuklash ---
+load_dotenv()
 
-# GitHub Secrets'dan service_account.json va Uzum API tokenini olish
-service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
-uzum_api_token = os.environ["UZUM_API_TOKEN"]
+# Google Sheets API va Uzum API tokenlari
+service_account_info = json.loads(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+uzum_api_token = os.getenv("UZUM_API_TOKEN")
 
 # Google Sheets bilan ulanish
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
 spreadsheet = client.open("Uzum API")
 
-# Helper: Sheetni olish yoki yaratish
 def get_or_create_sheet(title, rows=100, cols=10):
     try:
         return spreadsheet.worksheet(title)
     except gspread.exceptions.WorksheetNotFound:
         return spreadsheet.add_worksheet(title=title, rows=rows, cols=cols)
 
-# --- 1. Shop ma'lumotlari ---
+# --- 1. ShopID ma'lumotlari ---
 shop_sheet = get_or_create_sheet("ShopID", 100, 2)
 shop_sheet.clear()
 
@@ -95,9 +96,7 @@ while True:
         withdrawn_profit = item.get("withdrawnProfit")
         purchase_price = item.get("purchasePrice")
         image_url = item.get("productImage", {}).get("photo", {}).get("800", {}).get("high", "N/A")
-        from datetime import datetime, timedelta  # Fayl boshida 'timedelta' ham import qilingan bo'lishi kerak
         date = (datetime.fromtimestamp(item.get("date", 0) / 1000) + timedelta(hours=5)).strftime('%Y-%m-%d %H:%M')
-
 
         rows.append([
             order_id, status, shopId, title, sell_price, commission, logistic_fee, amount,
@@ -172,7 +171,7 @@ for item in sales_data.values():
 date_info_sheet.append_rows(batch_rows, value_input_option="RAW")
 print("✅ Aggregatsiya natijalari date_info_total varag‘iga yozildi.")
 
-# --- 4. Kunlik umumiy: daily_info_total ---
+# --- 4. daily_info_total ---
 daily_sheet = get_or_create_sheet("daily_info_total", 100, 11)
 daily_sheet.clear()
 daily_sheet.append_row([
@@ -213,7 +212,7 @@ for key, values in aggregated.items():
 daily_sheet.append_rows(batch_rows, value_input_option="USER_ENTERED")
 print("✅ Kunlik umumiy ma’lumotlar daily_info_total varag‘iga yozildi.")
 
-# --- 5. Soddalashtirilgan kunlik umumiy: daily_total ---
+# --- 5. daily_total ---
 daily_total_sheet = get_or_create_sheet("daily_total", 100, 6)
 daily_total_sheet.clear()
 daily_total_sheet.append_row([

@@ -1,74 +1,23 @@
-import pandas as pd
-import gspread
-from google.oauth2.service_account import Credentials
-import requests
-import json
-import matplotlib.pyplot as plt
-from io import BytesIO
 import os
+import json
+import gspread
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+from google.oauth2.service_account import Credentials
 
-# Google Sheets va Telegramga ulanish uchun o'zgaruvchilar
+# --- Google Sheets'ga ulanish ---
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-SERVICE_ACCOUNT_INFO = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
-creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPE)
+service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
-spreadsheet = client.open("Uzum API")  # Bu yerda Google Sheets nomini qo'ying
+spreadsheet = client.open("Uzum API")
 
+# --- Telegram token va chat ID ---
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-# Sanani olish uchun funksiya
-def get_yesterday_date():
-    yesterday = pd.to_datetime('today') - pd.DateOffset(1)
-    return yesterday.date()
-
-# Hisobotni olish va yuborish funksiyasi
-def fetch_and_send_daily_report():
-    # 'Orders' ishchi varaqasini o'qing
-    orders_worksheet = spreadsheet.worksheet("Orders")  # Bu yerda o'zgartiring
-    values = orders_worksheet.get_all_values()
-
-    # Pandas DataFrame yaratish
-    df = pd.DataFrame(values[1:], columns=values[0])
-
-    # Kecha sanasini olish
-    yesterday_date = get_yesterday_date()
-
-    # DataFrame'da sanani to'g'ri formatlash
-    # 'L' ustuni (index: 11) va sanani to'g'ri formatlash
-    df['Sana'] = pd.to_datetime(df.iloc[:, 11], format='%Y-%m-%d %H:%M', errors='coerce').dt.date
-
-    # Faqat kecha bo'yicha ma'lumotlarni tanlang
-    df_yesterday = df[df['Sana'] == yesterday_date]
-
-    # Agar kecha bo'yicha ma'lumotlar mavjud bo'lsa
-    if not df_yesterday.empty:
-        # Sotilgan narx va xarajatlar ustunlarini (index: 8 va 10) tanlang
-        total_sales = df_yesterday.iloc[:, 8].sum()  # 'I' ustuni sotilgan narx
-        total_cost = df_yesterday.iloc[:, 10].sum()   # 'K' ustuni xarajatlar
-        profit = total_sales - total_cost
-
-        # Grafik yaratish
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.bar(['Sotilgan Narx', 'Xarajatlar', 'Foyda'], [total_sales, total_cost, profit])
-        ax.set_ylabel('So\'m')
-        ax.set_title(f"Kecha ({yesterday_date}) hisobot")
-
-        # Grafikni saqlash
-        img_path = "/tmp/daily_report.png"
-        plt.savefig(img_path)
-        plt.close()
-
-        # Telegramga rasm va matn yuborish
-        caption = f"<b>Kecha ({yesterday_date}) bo'yicha hisobot:</b>\n\n" \
-                  f"💰 Jami Sotilgan: {total_sales} so'm\n" \
-                  f"💸 Jami Xarajatlar: {total_cost} so'm\n" \
-                  f"💵 Foyda: {profit} so'm"
-        send_photo_with_caption(img_path, caption)
-    else:
-        print(f"⚠️ Kecha ({yesterday_date}) bo'yicha ma'lumotlar topilmadi.")
-
-# Telegramga rasm va matn yuborish uchun funksiya
 def send_photo_with_caption(photo_path, caption):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     with open(photo_path, "rb") as photo_file:
@@ -77,15 +26,81 @@ def send_photo_with_caption(photo_path, caption):
             "caption": caption,
             "parse_mode": "HTML"
         }
-        files = {
-            "photo": photo_file
-        }
+        files = {"photo": photo_file}
         response = requests.post(url, data=payload, files=files)
         if response.status_code == 200:
             print("✅ Rasm va matn yuborildi!")
         else:
             print(f"⚠️ Xatolik: {response.text}")
 
-# Asosiy funksiya
+def fetch_and_send_daily_info():
+    orders_sheet = spreadsheet.worksheet("Orders")
+    values = orders_sheet.get_all_values()
+
+    if len(values) < 2:
+        print("⚠️ Ma'lumotlar topilmadi.")
+        return
+
+    data = values[1:]  # Birinchi qator - sarlavhalar
+
+    # Kechagi sana
+    yesterday = (datetime.today() - timedelta(days=1)).date()
+
+    total_quantity = 0
+    total_sales = 0
+    total_withdrawn = 0
+    total_cost = 0
+    filtered_rows = []
+
+    for row in data:
+        try:
+            # M ustun - sana (va rasm) — index 12
+            date_str = row[12].split()[0]  # Faqat sanani ajratib olamiz
+            row_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except (IndexError, ValueError):
+            continue
+
+        if row_date != yesterday:
+            continue
+
+        try:
+            quantity = int(row[7]) if row[7] else 0  # H ustun
+            price = int(row[4]) if row[4] else 0     # E ustun
+            withdrawn = int(row[8]) if row[8] else 0 # I ustun
+            cost = int(row[10]) if row[10] else 0    # K ustun
+        except (IndexError, ValueError):
+            continue
+
+        total_quantity += quantity
+        total_sales += price
+        total_withdrawn += withdrawn
+        total_cost += cost
+        filtered_rows.append([row[3], quantity, price])  # D ustun — SKU
+
+    if not filtered_rows:
+        print("❌ Kechagi sana bo‘yicha hech qanday ma’lumot topilmadi.")
+        return
+
+    # Rasmga chiqarish uchun jadval tayyorlash
+    df = pd.DataFrame(filtered_rows, columns=["SKU", "Soni", "Narxi"])
+    plt.figure(figsize=(8, 4))
+    plt.axis('tight')
+    plt.axis('off')
+    table = plt.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')
+    table.scale(1, 1.5)
+    plt.tight_layout()
+    img_path = "daily_summary.png"
+    plt.savefig(img_path, dpi=200)
+    plt.close()
+
+    caption = f"""🗓 <b>Sana:</b> {yesterday.strftime('%Y-%m-%d')}
+📦 <b>Jami sotilgan mahsulotlar:</b> {total_quantity} dona
+💰 <b>Jami tushum:</b> {total_sales} so'm
+🏦 <b>Jami yechilgan:</b> {total_withdrawn} so'm
+⚙️ <b>Tannarxlar yig'indisi:</b> {total_cost} so'm"""
+
+    send_photo_with_caption(img_path, caption)
+
+# --- Asosiy ---
 if __name__ == "__main__":
-    fetch_and_send_daily_report()
+    fetch_and_send_daily_info()

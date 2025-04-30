@@ -102,7 +102,7 @@ def fetch_and_send_daily_info():
     # DataFrame yaratib, SKU bo‘yicha guruhlab va kamayish tartibida saralab olish
     df = pd.DataFrame(filtered_rows, columns=["SKU", "Soni", "Narxi"])
     df_grouped = df.groupby("SKU", as_index=False).sum()
-    df_grouped = df_grouped.sort_values(by="Soni", ascending=False)
+    df_grouped = df_grouped.sort_values(by="Narxi", ascending=False)
 
     # Jadvalni rasmga chiqarish
     plt.figure(figsize=(8, 4 + len(df_grouped) * 0.25))

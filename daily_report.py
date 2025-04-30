@@ -1,9 +1,10 @@
+# --- Kutubxonalarni chaqirish ---
 import os
 import json
 import gspread
 import requests
 import pandas as pd
-from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 from google.oauth2.service_account import Credentials
 
 # --- Google Sheets'ga ulanish ---
@@ -18,59 +19,87 @@ spreadsheet = client.open("Uzum API")  # Sheets fayl nomi
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-def send_message(text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": text,
-        "parse_mode": "HTML"
-    }
-    response = requests.post(url, data=payload)
-    if response.status_code == 200:
-        print("✅ Xabar yuborildi!")
-    else:
-        print(f"⚠️ Xatolik: {response.text}")
+def send_photo_with_caption(photo_path, caption):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+    with open(photo_path, "rb") as photo_file:
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "caption": caption,
+            "parse_mode": "HTML"
+        }
+        files = {
+            "photo": photo_file
+        }
+        response = requests.post(url, data=payload, files=files)
+        if response.status_code == 200:
+            print("✅ Rasm va matn yuborildi!")
+        else:
+            print(f"⚠️ Xatolik: {response.text}")
 
 def fetch_and_send_daily_report():
-    sheet = spreadsheet.worksheet("Orders")
-    data = sheet.get_all_values()
+    # Jadvalni olish
+    worksheet = spreadsheet.worksheet("Orders")  # yoki siz foydalanayotgan jadval nomi
+    values = worksheet.get_all_values()
 
-    if not data or len(data) < 2:
-        print("⚠️ Jadvalda ma'lumot yo'q.")
+    if len(values) < 2:
+        print("⚠️ Ma'lumot topilmadi.")
         return
 
-    df = pd.DataFrame(data[1:], columns=data[0])
+    data = values[1:]  # 1-qatordan pastdagi ma’lumotlar
+    df = pd.DataFrame(data)
 
-    # Sana formatini tuzatish va faqat kechagi sanani tanlash
-    df['Sana'] = pd.to_datetime(df['L'], errors='coerce').dt.date
-    yesterday = datetime.now().date() - timedelta(days=1)
-    df_yesterday = df[df['Sana'] == yesterday]
-
-    if df_yesterday.empty:
-        print("⚠️ Kechagi ma'lumot topilmadi.")
+    # Indexlar bo‘yicha ustunlarni aniqlash
+    try:
+        df['SKU'] = df[3]
+        df['Narx'] = pd.to_numeric(df[4], errors='coerce')        # Sotuv narxi
+        df['Soni'] = pd.to_numeric(df[7], errors='coerce')        # Soni
+        df['Sotilgan'] = pd.to_numeric(df[8], errors='coerce')    # Sotilgan narx
+        df['Tannarx'] = pd.to_numeric(df[10], errors='coerce')    # Tannarx
+        df['Sana'] = pd.to_datetime(df[11], errors='coerce').dt.date  # Sana
+    except Exception as e:
+        print(f"❌ Xatolik: {e}")
         return
 
-    # Zarur ustunlarni floatga aylantirish
-    df_yesterday['Sotilgan'] = pd.to_numeric(df_yesterday['I'], errors='coerce')
-    df_yesterday['Tannarx'] = pd.to_numeric(df_yesterday['K'], errors='coerce')
-    df_yesterday['Soni'] = pd.to_numeric(df_yesterday['H'], errors='coerce')  # Miqdor ustuni
+    # NaN qiymatlarni tashlab yuboramiz
+    df = df.dropna(subset=['Sana', 'Soni', 'Sotilgan', 'Tannarx'])
 
-    df_yesterday = df_yesterday.dropna(subset=['Sotilgan', 'Tannarx', 'Soni'])
+    # Foyda ustunini hisoblash
+    df['Foyda'] = df['Sotilgan'] - df['Tannarx']
 
-    # Hisoblash
-    total_quantity = int(df_yesterday['Soni'].sum())
-    total_sales = int((df_yesterday['Sotilgan'] * df_yesterday['Soni']).sum())
-    total_cost = int((df_yesterday['Tannarx'] * df_yesterday['Soni']).sum())
-    total_profit = total_sales - total_cost
+    # Sanalar bo‘yicha guruhlab olish
+    grouped = df.groupby('Sana').agg({
+        'Soni': 'sum',
+        'Sotilgan': 'sum',
+        'Tannarx': 'sum',
+        'Foyda': 'sum'
+    }).reset_index()
 
-    text = f"""📊 <b>Kechagi hisobot ({yesterday}):</b>
-📦 <b>Jami mahsulotlar:</b> {total_quantity} dona
-💰 <b>Jami savdo:</b> {total_sales:,} so'm
-🏷 <b>Jami tannarx:</b> {total_cost:,} so'm
-📈 <b>Sof foyda:</b> <u>{total_profit:,} so'm</u>"""
+    if grouped.empty:
+        print("⚠️ Hisobot uchun ma’lumot yo‘q.")
+        return
 
-    send_message(text)
+    # Jadvalni rasmga aylantirish
+    plt.figure(figsize=(10, 4))
+    plt.axis('off')
+    table = plt.table(
+        cellText=grouped.values,
+        colLabels=grouped.columns,
+        loc='center',
+        cellLoc='center'
+    )
+    table.scale(1.2, 1.5)
+    plt.tight_layout()
 
-# --- Asosiy ---
+    img_path = "daily_report.png"
+    plt.savefig(img_path, dpi=200)
+    plt.close()
+
+    # Yuboriladigan matn
+    caption = "📊 <b>Kunlik savdo hisobot</b> (sanalar bo‘yicha)"
+
+    # Telegramga rasm + matn yuborish
+    send_photo_with_caption(img_path, caption)
+
+# --- Asosiy ishga tushirish ---
 if __name__ == "__main__":
     fetch_and_send_daily_report()

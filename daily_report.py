@@ -1,4 +1,3 @@
-# --- Kutubxonalarni chaqirish ---
 import os
 import json
 import gspread
@@ -13,9 +12,9 @@ SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 service_account_info = json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
-spreadsheet = client.open("Uzum API")  # Sheets fayl nomi
+spreadsheet = client.open("Uzum API")  # Google Sheets fayli nomi
 
-# --- Telegram token va chat ID ---
+# --- Telegram ma'lumotlari ---
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
@@ -37,69 +36,60 @@ def send_photo_with_caption(photo_path, caption):
             print(f"⚠️ Xatolik: {response.text}")
 
 def fetch_and_send_daily_report():
-    # Jadvalni olish
-    worksheet = spreadsheet.worksheet("Orders")  # yoki siz foydalanayotgan jadval nomi
-    values = worksheet.get_all_values()
+    sheet = spreadsheet.worksheet("Orders")
+    data = sheet.get_all_values()
 
-    if len(values) < 2:
-        print("⚠️ Ma'lumot topilmadi.")
+    if len(data) < 2:
+        print("⚠️ Ma'lumot yetarli emas.")
         return
 
-    data = values[1:]  # 1-qatordan pastdagi ma’lumotlar
-    df = pd.DataFrame(data)
+    headers = data[0]
+    df = pd.DataFrame(data[1:], columns=headers)
 
-    # Indexlar bo‘yicha ustunlarni aniqlash
     try:
-        df['SKU'] = df[3]
-        df['Narx'] = pd.to_numeric(df[4], errors='coerce')        # Sotuv narxi
-        df['Soni'] = pd.to_numeric(df[7], errors='coerce')        # Soni
-        df['Sotilgan'] = pd.to_numeric(df[8], errors='coerce')    # Sotilgan narx
-        df['Tannarx'] = pd.to_numeric(df[10], errors='coerce')    # Tannarx
-        df['Sana'] = pd.to_datetime(df[11], errors='coerce').dt.date  # Sana
+        df['Sana'] = pd.to_datetime(df.iloc[:, 11], errors='coerce').dt.date  # 'L' ustun: 11-index
+        df['Tannarx'] = pd.to_numeric(df.iloc[:, 10], errors='coerce')  # 'K' ustun: 10-index
+        df['Sotilgan narx'] = pd.to_numeric(df.iloc[:, 8], errors='coerce')  # 'I' ustun: 8-index
+        df['Soni'] = pd.to_numeric(df.iloc[:, 7], errors='coerce')  # 'H' ustun: 7-index
     except Exception as e:
-        print(f"❌ Xatolik: {e}")
+        print(f"❌ Ustunlarni o'qishda xatolik: {e}")
         return
 
-    # NaN qiymatlarni tashlab yuboramiz
-    df = df.dropna(subset=['Sana', 'Soni', 'Sotilgan', 'Tannarx'])
+    bugun = pd.Timestamp.now().date()
+    df_today = df[df['Sana'] == bugun]
 
-    # Foyda ustunini hisoblash
-    df['Foyda'] = df['Sotilgan'] - df['Tannarx']
-
-    # Sanalar bo‘yicha guruhlab olish
-    grouped = df.groupby('Sana').agg({
-        'Soni': 'sum',
-        'Sotilgan': 'sum',
-        'Tannarx': 'sum',
-        'Foyda': 'sum'
-    }).reset_index()
-
-    if grouped.empty:
-        print("⚠️ Hisobot uchun ma’lumot yo‘q.")
+    if df_today.empty:
+        print("📭 Bugungi sotuvlar topilmadi.")
         return
+
+    jami_soni = int(df_today['Soni'].sum())
+    jami_savdo = int((df_today['Soni'] * df_today['Sotilgan narx']).sum())
+    jami_tannarx = int((df_today['Soni'] * df_today['Tannarx']).sum())
+    foyda = jami_savdo - jami_tannarx
+
+    # Eng ko‘p sotilgan SKUlar (E ustun: 4-index)
+    df_today['SKU'] = df_today.iloc[:, 4]
+    top_sku = df_today.groupby('SKU')['Soni'].sum().sort_values(ascending=False).head(10).reset_index()
 
     # Jadvalni rasmga aylantirish
-    plt.figure(figsize=(10, 4))
+    plt.figure(figsize=(8, 4))
     plt.axis('off')
-    table = plt.table(
-        cellText=grouped.values,
-        colLabels=grouped.columns,
-        loc='center',
-        cellLoc='center'
-    )
-    table.scale(1.2, 1.5)
+    table = plt.table(cellText=top_sku.values, colLabels=top_sku.columns, loc='center', cellLoc='center')
+    table.scale(1, 1.5)
     plt.tight_layout()
-
-    img_path = "daily_report.png"
-    plt.savefig(img_path, dpi=200)
+    image_path = "daily_summary.png"
+    plt.savefig(image_path, dpi=200)
     plt.close()
 
-    # Yuboriladigan matn
-    caption = "📊 <b>Kunlik savdo hisobot</b> (sanalar bo‘yicha)"
+    # Yuboriladigan xabar matni
+    caption = f"""📅 <b>Bugungi hisobot: {bugun}</b>
+📦 <b>Jami mahsulotlar:</b> {jami_soni} dona
+💰 <b>Jami savdo:</b> {jami_savdo:,} so'm
+💸 <b>Jami tannarx:</b> {jami_tannarx:,} so'm
+📈 <b>Foyda:</b> {foyda:,} so'm"""
 
-    # Telegramga rasm + matn yuborish
-    send_photo_with_caption(img_path, caption)
+    send_photo_with_caption(image_path, caption)
 
-# --- Asosiy ishga tushirish ---
+# --- Asosiy ---
 if __name__ == "__main__":
     fetch_and_send_daily_report()

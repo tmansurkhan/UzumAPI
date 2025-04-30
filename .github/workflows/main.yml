@@ -25,8 +25,7 @@ jobs:
 
       - name: Kutubxonalarni o'rnatish
         run: |
-          python -m pip install --upgrade pip
-          pip install gspread google-auth requests pandas
+          pip install -r requirements.txt
 
       - name: Kechagi hisobotni yuborish
         run: python daily_report.py

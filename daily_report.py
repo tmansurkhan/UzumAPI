@@ -49,13 +49,12 @@ def fetch_and_send_daily_info():
     total_quantity = 0
     total_sales = 0
     total_withdrawn = 0
-    total_cost = 0
+    total_profit = 0
     filtered_rows = []
 
     for row in data:
         try:
-            # M ustun - sana (va rasm) — index 12
-            date_str = row[12].split()[0]  # Faqat sanani ajratib olamiz
+            date_str = row[12].split()[0]  # M ustun — index 12
             row_date = datetime.strptime(date_str, "%Y-%m-%d").date()
         except (IndexError, ValueError):
             continue
@@ -64,18 +63,22 @@ def fetch_and_send_daily_info():
             continue
 
         try:
-            quantity = int(row[7]) if row[7] else 0  # H ustun
-            price = int(row[4]) if row[4] else 0     # E ustun
-            withdrawn = int(row[8]) if row[8] else 0 # I ustun
-            cost = int(row[10]) if row[10] else 0    # K ustun
+            quantity = int(row[7]) if row[7] else 0       # H ustun — index 7
+            price = int(row[4]) if row[4] else 0          # E ustun — index 4
+            withdrawn = int(row[8]) if row[8] else 0      # I ustun — index 8
+            cost = int(row[10]) if row[10] else 0         # K ustun — index 10
         except (IndexError, ValueError):
             continue
+
+        if quantity == 0:
+            continue  # Buyurtma yo‘q bo‘lsa, bu qatordan o‘tamiz
 
         total_quantity += quantity
         total_sales += price
         total_withdrawn += withdrawn
-        total_cost += cost
-        filtered_rows.append([row[3], quantity, price])  # D ustun — SKU
+        total_profit += withdrawn - cost
+
+        filtered_rows.append([row[3], quantity, price])  # D ustun — SKU (index 3)
 
     if not filtered_rows:
         print("❌ Kechagi sana bo‘yicha hech qanday ma’lumot topilmadi.")
@@ -97,7 +100,7 @@ def fetch_and_send_daily_info():
 📦 <b>Jami sotilgan mahsulotlar:</b> {total_quantity} dona
 💰 <b>Jami tushum:</b> {total_sales} so'm
 🏦 <b>Jami yechilgan:</b> {total_withdrawn} so'm
-⚙️ <b>Tannarxlar yig'indisi:</b> {total_cost} so'm"""
+📈 <b>Sof foyda:</b> {total_profit} so'm"""
 
     send_photo_with_caption(img_path, caption)
 

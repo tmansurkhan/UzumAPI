@@ -17,7 +17,7 @@ with open(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")) as f:
     service_account_info = json.load(f)
 
 scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = Credentials.from_service_account_info(creds_data, scopes=scopes)
+credentials = Credentials.from_service_account_info(service_account_info, scopes=scopes)
 client = gspread.authorize(credentials)
 
 # 4. Open spreadsheet and get data

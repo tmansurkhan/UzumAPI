@@ -33,7 +33,7 @@ client = gspread.authorize(creds)
 spreadsheet = client.open("Uzum API")
 ORDERS_SHEET_NAME = "Orders"
 
-# --- Telegram token va chat ID --- 
+# --- Telegram token va chat ID ---
 # .env faylidan o‘zgaruvchilarni olish
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -44,9 +44,9 @@ DATE_FORMAT = "%Y-%m-%d"
 # --- Reply Keyboard (bosh menyu) ---
 main_keyboard = ReplyKeyboardMarkup([["Hisobot olish"]], resize_keyboard=True)
 
-# --- Inline Keyboard --- 
+# --- Inline Keyboard ---
 def get_time_range_keyboard():
-    return InlineKeyboardMarkup([
+    return InlineKeyboardMarkup([ 
         [InlineKeyboardButton("Bugungi", callback_data="today"),
          InlineKeyboardButton("Kechagi", callback_data="yesterday")],
         [InlineKeyboardButton("1 hafta", callback_data="1week"),
@@ -62,42 +62,49 @@ def fetch_report(start_date, end_date):
     if not rows or len(rows) < 2:
         return None, None
 
-    headers = rows[0]
+    # 1-qator sarlavhalar, 2+-qatordagi ma'lumotlar
     data = rows[1:]
-    df = pd.DataFrame(data, columns=headers)
 
-    # Vaqt ustuni (index orqali)
-    order_time_index = headers.index("M")
-    df['Order Time'] = pd.to_datetime([r[order_time_index] for r in data], errors='coerce')
-    df = df.dropna(subset=['Order Time'])
+    # DataFrame yaratish
+    df = pd.DataFrame(data)
 
-    mask = (df['Order Time'] >= start_date) & (df['Order Time'] <= end_date)
+    # Indekslar bo‘yicha ustunlar:
+    SKU_IDX      = 3
+    PRICE_IDX    = 4
+    COMM_IDX     = 5
+    LOG_IDX      = 6
+    QTY_IDX      = 7
+    TIME_IDX     = 12
+
+    # 1) Vaqt ustunini datetime ga o'tkazish
+    df[TIME_IDX] = pd.to_datetime(df[TIME_IDX], format="%Y-%m-%d %H:%M", errors='coerce')
+    df = df.dropna(subset=[TIME_IDX])
+
+    # 2) Sana oralig‘i bo‘yicha filtrlash
+    mask = (df[TIME_IDX] >= start_date) & (df[TIME_IDX] <= end_date)
     filtered = df.loc[mask]
     if filtered.empty:
         return None, None
 
-    # Ustun indekslarini aniqlash
-    price_i = headers.index("E")
-    comm_i  = headers.index("F")
-    log_i   = headers.index("G")
-    qty_i   = headers.index("H")
-    sku_i   = headers.index("D")
+    # 3) Sonli ustunlarga aylantirish
+    filtered[PRICE_IDX] = pd.to_numeric(filtered[PRICE_IDX], errors='coerce').fillna(0)
+    filtered[COMM_IDX]  = pd.to_numeric(filtered[COMM_IDX],  errors='coerce').fillna(0)
+    filtered[LOG_IDX]   = pd.to_numeric(filtered[LOG_IDX],   errors='coerce').fillna(0)
+    filtered[QTY_IDX]   = pd.to_numeric(filtered[QTY_IDX],   errors='coerce').fillna(0)
 
-    # Sonli qiymatlar
-    filtered['E'] = pd.to_numeric(filtered.iloc[:, price_i], errors='coerce').fillna(0)
-    filtered['F'] = pd.to_numeric(filtered.iloc[:, comm_i ], errors='coerce').fillna(0)
-    filtered['G'] = pd.to_numeric(filtered.iloc[:, log_i  ], errors='coerce').fillna(0)
-    filtered['H'] = pd.to_numeric(filtered.iloc[:, qty_i  ], errors='coerce').fillna(0)
+    # 4) Hisob-kitob
+    total_sales      = (filtered[PRICE_IDX] * filtered[QTY_IDX]).sum()
+    total_commission = (filtered[COMM_IDX]  * filtered[QTY_IDX]).sum()
+    total_logistics  = (filtered[LOG_IDX]   * filtered[QTY_IDX]).sum()
+    total_orders     = filtered[QTY_IDX].sum()
 
-    total_sales      = (filtered['E'] * filtered['H']).sum()
-    total_commission = (filtered['F'] * filtered['H']).sum()
-    total_logistics  = (filtered['G'] * filtered['H']).sum()
-    total_orders     = filtered['H'].sum()
-
-    filtered['total_sold_price'] = filtered['E'] * filtered['H']
+    # 5) Top 3 SKU
+    filtered['revenue'] = filtered[PRICE_IDX] * filtered[QTY_IDX]
     top_skus = (
-        filtered.groupby(filtered.columns[sku_i])['total_sold_price']
-        .sum().sort_values(ascending=False).head(3)
+        filtered.groupby(SKU_IDX)['revenue']
+        .sum()
+        .sort_values(ascending=False)
+        .head(3)
     )
 
     return (total_sales, total_commission, total_logistics, total_orders), top_skus

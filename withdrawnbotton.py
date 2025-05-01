@@ -10,6 +10,10 @@ from telegram.ext import (
     CallbackQueryHandler, ContextTypes, filters
 )
 from google.oauth2.service_account import Credentials
+from dotenv import load_dotenv  # .env faylini yuklash uchun kutubxona
+
+# --- .env faylni yuklash ---
+load_dotenv()
 
 # --- Logger ---
 logging.basicConfig(
@@ -29,7 +33,8 @@ client = gspread.authorize(creds)
 spreadsheet = client.open("Uzum API")
 ORDERS_SHEET_NAME = "Orders"
 
-# --- Telegram token ---
+# --- Telegram token va chat ID --- 
+# .env faylidan o‘zgaruvchilarni olish
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -39,7 +44,7 @@ DATE_FORMAT = "%Y-%m-%d"
 # --- Reply Keyboard (bosh menyu) ---
 main_keyboard = ReplyKeyboardMarkup([["Hisobot olish"]], resize_keyboard=True)
 
-# --- Inline Keyboard ---
+# --- Inline Keyboard --- 
 def get_time_range_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("Bugungi", callback_data="today"),

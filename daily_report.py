@@ -18,7 +18,6 @@ telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 # 3. Load Google Service Account credentials from JSON string in .env
 with open(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")) as f:
     service_account_info = json.load(f)
-google_creds_dict = json.loads(google_creds_json)
 scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(google_creds_dict, scopes=scopes)
 client = gspread.authorize(credentials)

@@ -97,7 +97,8 @@ while True:
         withdrawn_profit = item.get("withdrawnProfit", 0)
         purchase_price = item.get("purchasePrice", 0)
         image_url = item.get("productImage", {}).get("photo", {}).get("800", {}).get("high", "N/A")
-        date = (datetime.fromtimestamp(item.get("date", 0) / 1000) + timedelta(hours=0)).strftime('%Y-%m-%d %H:%M')
+        date = (datetime.utcfromtimestamp(item.get("date", 0) / 1000) + timedelta(hours=5)).strftime('%Y-%m-%d %H:%M')
+
 
         rows.append([
             order_id, status, shopId, title, sell_price, commission, logistic_fee, amount,

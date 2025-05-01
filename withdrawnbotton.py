@@ -30,7 +30,8 @@ spreadsheet = client.open("Uzum API")
 ORDERS_SHEET_NAME = "Orders"
 
 # --- Telegram token ---
-TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # --- Vaqt formati ---
 DATE_FORMAT = "%Y-%m-%d"

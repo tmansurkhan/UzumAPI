@@ -26,7 +26,7 @@ creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE
 client = gspread.authorize(creds)
 
 # --- Google Sheets faylini ochish ---
-spreadsheet = client.open("Orders")
+spreadsheet = client.open("Uzum API")
 worksheet = spreadsheet.sheet1
 data = worksheet.get_all_values()
 

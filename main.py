@@ -12,14 +12,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Google Sheets API va Uzum API tokenlari
-uzum_api_token = os.getenv("UZUM_API_TOKEN")
 with open(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")) as f:
     service_account_info = json.load(f)
+uzum_api_token = os.getenv("UZUM_API_TOKEN")
 
 # Google Sheets bilan ulanish
-scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = Credentials.from_service_account_info(service_account_info, scopes=scopes)
-client = gspread.authorize(credentials)
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
+client = gspread.authorize(creds)
 spreadsheet = client.open("Uzum API")
 
 def get_or_create_sheet(title, rows=100, cols=10):

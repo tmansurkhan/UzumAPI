@@ -13,7 +13,8 @@ load_dotenv()
 # 2. Get credentials and tokens
 telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
-google_credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+with open(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")) as f:
+    service_account_info = json.load(f)
 
 # 3. Google credentials
 with open(google_credentials_path) as f:

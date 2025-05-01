@@ -16,10 +16,6 @@ telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 with open(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")) as f:
     service_account_info = json.load(f)
 
-# 3. Google credentials
-with open(google_credentials_path) as f:
-    creds_data = json.load(f)
-
 scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(creds_data, scopes=scopes)
 client = gspread.authorize(credentials)

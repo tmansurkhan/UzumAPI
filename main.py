@@ -8,7 +8,7 @@ from google.oauth2.service_account import Credentials
 from collections import defaultdict
 from dotenv import load_dotenv
 
-# --- 0. Muhit o‘zgaruvchilarini yuklash ---
+# 0. Muhit o‘zgaruvchilarini yuklash
 load_dotenv()
 
 # Google Sheets API va Uzum API tokenlari
@@ -28,7 +28,7 @@ def get_or_create_sheet(title, rows=100, cols=10):
     except gspread.exceptions.WorksheetNotFound:
         return spreadsheet.add_worksheet(title=title, rows=rows, cols=cols)
 
-# --- 1. ShopID ma'lumotlari ---
+# 1. ShopID ma'lumotlari
 shop_sheet = get_or_create_sheet("ShopID", 100, 2)
 shop_sheet.clear()
 
@@ -54,7 +54,7 @@ if response.status_code == 200:
 else:
     print(f"❌ Shop API xatosi: {response.status_code}")
 
-# --- 2. Orders ma'lumotlari ---
+# 2. Orders ma'lumotlari
 orders_sheet = get_or_create_sheet("Orders", 100, 13)
 orders_sheet.clear()
 orders_sheet.append_row([
@@ -67,7 +67,7 @@ params = {
     "page": 0,
     "size": 10000,
     "group": "false",
-    "shopIds": [12488, 20002, 23251, 33077, 33863, 42620]
+    "shopIds": list(map(int, shop_id_name_map.keys()))
 }
 
 total_orders = 0
@@ -89,13 +89,13 @@ while True:
         status = item.get("status")
         shopId = str(item.get("shopId"))
         title = item.get("skuTitle")
-        sell_price = item.get("sellPrice")
-        commission = item.get("commission")
-        logistic_fee = item.get("logisticDeliveryFee")
-        amount = item.get("amount")
-        seller_profit = item.get("sellerProfit")
-        withdrawn_profit = item.get("withdrawnProfit")
-        purchase_price = item.get("purchasePrice")
+        sell_price = item.get("sellPrice", 0)
+        commission = item.get("commission", 0)
+        logistic_fee = item.get("logisticDeliveryFee", 0)
+        amount = item.get("amount", 0)
+        seller_profit = item.get("sellerProfit", 0)
+        withdrawn_profit = item.get("withdrawnProfit", 0)
+        purchase_price = item.get("purchasePrice", 0)
         image_url = item.get("productImage", {}).get("photo", {}).get("800", {}).get("high", "N/A")
         date = (datetime.fromtimestamp(item.get("date", 0) / 1000) + timedelta(hours=5)).strftime('%Y-%m-%d %H:%M')
 
@@ -113,7 +113,7 @@ while True:
         break
     params["page"] += 1
 
-# --- 3. Aggregatsiya: date_info_total ---
+# 3. Aggregatsiya: date_info_total
 date_info_sheet = get_or_create_sheet("date_info_total", 100, 10)
 date_info_sheet.clear()
 date_info_sheet.append_row([
@@ -172,7 +172,7 @@ for item in sales_data.values():
 date_info_sheet.append_rows(batch_rows, value_input_option="RAW")
 print("✅ Aggregatsiya natijalari date_info_total varag‘iga yozildi.")
 
-# --- 4. daily_info_total ---
+# 4. daily_info_total
 daily_sheet = get_or_create_sheet("daily_info_total", 100, 11)
 daily_sheet.clear()
 daily_sheet.append_row([
@@ -213,7 +213,7 @@ for key, values in aggregated.items():
 daily_sheet.append_rows(batch_rows, value_input_option="USER_ENTERED")
 print("✅ Kunlik umumiy ma’lumotlar daily_info_total varag‘iga yozildi.")
 
-# --- 5. daily_total ---
+# 5. daily_total
 daily_total_sheet = get_or_create_sheet("daily_total", 100, 6)
 daily_total_sheet.clear()
 daily_total_sheet.append_row([

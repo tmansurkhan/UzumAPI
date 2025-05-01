@@ -13,7 +13,7 @@ load_dotenv()
 
 # Google Sheets API va Uzum API tokenlari
 with open(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")) as f:
-    service_account_info = json.load(f)
+    service_account = json.load(f)
 uzum_api_token = os.getenv("UZUM_API_TOKEN")
 
 # Google Sheets bilan ulanish

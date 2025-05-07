@@ -33,8 +33,15 @@ if response.status_code != 200:
     print(f"❌ API xatosi: {response.status_code} - {response.text}")
     exit()
 
-print(response.json())
-exit()
+response = requests.get(URL, headers=headers)
+
+# Avval JSONni ajrating
+invoices = response.json()  # Bu list bo‘lishi kerak
+
+# Print orqali tekshirishingiz mumkin
+print(f"Qaytgan ma'lumot turi: {type(invoices)}")  # list deb chiqadi
+print(invoices[:2])  # Faqat 2ta element ko‘rsatilsin
+
 if not invoices:
     print("📭 Hech qanday faktura topilmadi.")
     exit()

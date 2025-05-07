@@ -4,12 +4,11 @@ import requests
 import gspread
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
-from datetime import datetime
 
-# --- Muhit o'zgaruvchilarini yuklash ---
+# --- Muhit o'zgaruvchilarini yuklash (.env fayldan) ---
 load_dotenv()
 
-# --- Google Sheets credential ---
+# --- Google Sheets credential sozlamalari ---
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 with open("service_account.json") as f:
@@ -18,36 +17,48 @@ with open("service_account.json") as f:
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
 
-# --- "nakladnoy" faylini ochish ---
-spreadsheet = client.open("Uzum API")
-worksheet = spreadsheet.sheet1
+# --- "Uzum API" faylidan "nakladnoy" varog'ini ochish ---
+try:
+    spreadsheet = client.open("Uzum API")
+    worksheet = spreadsheet.worksheet("nakladnoy")
+except gspread.SpreadsheetNotFound:
+    print("❌ 'Uzum API' nomli fayl topilmadi.")
+    exit()
+except gspread.WorksheetNotFound:
+    print("❌ 'nakladnoy' nomli varaq topilmadi.")
+    exit()
 
-# --- Uzum API so'rovi ---
+# --- API so'rovi uchun URL qismlari ---
+BASE_URL = "https://api-seller.uzum.uz/api/seller-openapi/v1/invoice"
+PAGE = 0
+SIZE = 5000
+URL = f"{BASE_URL}?size={SIZE}&page={PAGE}"
+
 headers = {
     "accept": "*/*",
     "Authorization": "OsfBx+VPNzoViSLx20H8RcTEKqJtoMOEzDokHG3sqN8="
 }
-response = requests.get("https://api-seller.uzum.uz/api/seller-openapi/v1/invoice?size=50&page=0", headers=headers)
+
+# --- API chaqiruvi ---
+response = requests.get(URL, headers=headers)
 
 if response.status_code != 200:
     print(f"❌ API xatosi: {response.status_code} - {response.text}")
     exit()
 
-response = requests.get(URL, headers=headers)
+# --- JSON javobni tahlil qilish ---
+invoices = response.json()
 
-# Avval JSONni ajrating
-invoices = response.json()  # Bu list bo‘lishi kerak
-
-# Print orqali tekshirishingiz mumkin
-print(f"Qaytgan ma'lumot turi: {type(invoices)}")  # list deb chiqadi
-print(invoices[:2])  # Faqat 2ta element ko‘rsatilsin
-
-if not invoices:
-    print("📭 Hech qanday faktura topilmadi.")
+if not isinstance(invoices, list):
+    print("❌ Noto'g'ri javob formati: list kutilgan edi.")
     exit()
 
-# --- Sarlavhalarni tayyorlash ---
-headers = [
+if not invoices:
+    print("📭 Fakturalar topilmadi.")
+    exit()
+
+# --- Jadval sarlavhalari ---
+headers_row = [
     "InvoiceID", "InvoiceNumber", "DateCreated", "Status",
     "ShopTitle", "StockTitle", "TotalAccepted", "ProductTitle",
     "SkuTitle", "QuantityAccepted", "PurchasePrice"
@@ -55,7 +66,7 @@ headers = [
 
 rows = []
 
-# --- Fakturalarni ajratib olish ---
+# --- Ma'lumotlarni yig'ish ---
 for invoice in invoices:
     invoice_id = invoice.get("id")
     invoice_number = invoice.get("invoiceNumber")
@@ -80,7 +91,7 @@ for invoice in invoices:
 
 # --- Google Sheets'ga yozish ---
 worksheet.clear()
-worksheet.append_row(headers)
+worksheet.append_row(headers_row)
 worksheet.append_rows(rows)
 
-print("✅ Faktura ma'lumotlari 'nakladnoy' fayliga muvaffaqiyatli yozildi.")
+print("✅ Faktura ma'lumotlari 'nakladnoy' varog'iga muvaffaqiyatli yozildi.")

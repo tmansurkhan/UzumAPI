@@ -19,7 +19,7 @@ creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE
 client = gspread.authorize(creds)
 
 # --- "nakladnoy" faylini ochish ---
-spreadsheet = client.open("nakladnoy")
+spreadsheet = client.open("Uzum API")
 worksheet = spreadsheet.sheet1
 
 # --- Uzum API so'rovi ---

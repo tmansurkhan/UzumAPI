@@ -33,7 +33,8 @@ if response.status_code != 200:
     print(f"❌ API xatosi: {response.status_code} - {response.text}")
     exit()
 
-invoices = response.json()
+print(response.json())
+exit()
 if not invoices:
     print("📭 Hech qanday faktura topilmadi.")
     exit()

@@ -37,11 +37,11 @@ if not data:
 rows = data[1:]  # Sarlavhasiz qatorlar
 
 # --- Ustun indekslari (qo‘lda berilgan) ---
-date_col = 12
-sku_col = 3
-quantity_col = 7
-cost_price_col = 10
-sold_price_col = 8
+date_col = 13
+sku_col = 4
+quantity_col = 8
+cost_price_col = 11
+sold_price_col = 9
 
 # --- Bugungi sanani olish va filtrlash ---
 today_str = datetime.now().strftime("%Y-%m-%d")

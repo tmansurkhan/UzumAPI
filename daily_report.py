@@ -43,11 +43,11 @@ def col_index(name):
     return header.index(name) if name in header else -1
 
 # --- Ustun indekslari ---
-date_col = col_index("DateCreated")
+date_col = col_index("date")
 sku_col = col_index("ProductTitle")
-quantity_col = col_index("QuantityAccepted")
-cost_price_col = col_index("PurchasePrice")
-sold_price_col = col_index("SellerProfit")  # Yaxshi bo‘lsa, aniqlik kiriting
+quantity_col = col_index("amount")
+cost_price_col = col_index("purchasePrice")
+sold_price_col = col_index("sellerProfit")  # Yaxshi bo‘lsa, aniqlik kiriting
 
 # --- Bugungi sanani olish va filtrlash ---
 today_str = datetime.now().strftime("%Y-%m-%d")

@@ -28,7 +28,7 @@ client = gspread.authorize(creds)
 
 # --- Google Sheets faylini ochish va 'nakladnoy' varog'ini tanlash ---
 spreadsheet = client.open("Uzum API")
-worksheet = spreadsheet.worksheet("nakladnoy")
+worksheet = spreadsheet.worksheet("Orders")
 data = worksheet.get_all_values()
 
 if not data:

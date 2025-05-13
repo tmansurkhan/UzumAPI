@@ -10,23 +10,22 @@ from collections import defaultdict
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
 
-# --- Muhit o'zgaruvchilarini yuklash (.env fayldan) ---
+# --- Muhit o'zgaruvchilarini yuklash ---
 load_dotenv()
 
 # --- Telegram ma'lumotlari ---
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# --- Google Sheets'ga ulanish uchun credential ---
+# --- Google Sheets'ga ulanish ---
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
 with open("service_account.json") as f:
     service_account_info = json.load(f)
 
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
 
-# --- Google Sheets faylini ochish va 'nakladnoy' varog'ini tanlash ---
+# --- Google Sheet faylini ochish va varog‘ini tanlash ---
 spreadsheet = client.open("Uzum API")
 worksheet = spreadsheet.worksheet("Orders")
 data = worksheet.get_all_values()
@@ -47,7 +46,21 @@ date_col = col_index("date")
 sku_col = col_index("ProductTitle")
 quantity_col = col_index("amount")
 cost_price_col = col_index("purchasePrice")
-sold_price_col = col_index("sellerProfit")  # Yaxshi bo‘lsa, aniqlik kiriting
+sold_price_col = col_index("sellerProfit")
+
+# --- Ustunlar mavjudligini tekshirish ---
+required_indices = {
+    "date": date_col,
+    "ProductTitle": sku_col,
+    "amount": quantity_col,
+    "purchasePrice": cost_price_col,
+    "sellerProfit": sold_price_col
+}
+
+for col_name, idx in required_indices.items():
+    if idx == -1:
+        print(f"❌ '{col_name}' ustuni topilmadi. Jadval sarlavhasini tekshiring.")
+        exit()
 
 # --- Bugungi sanani olish va filtrlash ---
 today_str = datetime.now().strftime("%Y-%m-%d")
@@ -58,11 +71,17 @@ sku_data = defaultdict(lambda: {"quantity": 0, "sales": 0, "profit": 0})
 
 for row in today_orders:
     try:
-        # ProductTitle dan SKU qismini ajratib olish
-        sku = row[sku_col].split("-")[0].strip() if "-" in row[sku_col] else row[sku_col].strip()
-        quantity = int(row[quantity_col]) if row[quantity_col] else 0
-        cost = int(row[cost_price_col]) if row[cost_price_col] else 0
-        sold = int(row[sold_price_col]) if row[sold_price_col] else 0
+        # Qator to‘liq bo‘lishini tekshirish
+        if len(row) <= max(sku_col, quantity_col, cost_price_col, sold_price_col):
+            continue
+
+        product_title = row[sku_col].strip()
+        sku = product_title.split("-")[0].strip() if "-" in product_title else product_title
+
+        # Qiymatlarni xavfsiz tarzda o‘qish
+        quantity = int(row[quantity_col].strip()) if row[quantity_col].strip().isdigit() else 0
+        cost = int(row[cost_price_col].strip()) if row[cost_price_col].strip().isdigit() else 0
+        sold = int(row[sold_price_col].strip()) if row[sold_price_col].strip().isdigit() else 0
 
         sales = sold * quantity
         profit = (sold - cost) * quantity
@@ -101,7 +120,7 @@ if sku_data:
     total_sales = df["Savdo"].sum()
     total_profit = df["Foyda"].sum()
 
-    # Jadvaldan rasm yaratish
+    # Matplotlib orqali jadval rasm yaratish
     plt.figure(figsize=(8, 4))
     plt.axis('off')
     table = plt.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')

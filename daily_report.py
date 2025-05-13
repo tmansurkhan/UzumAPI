@@ -1,3 +1,4 @@
+# --- Kutubxonalarni chaqirish ---
 import os
 import json
 import requests
@@ -25,9 +26,9 @@ with open("service_account.json") as f:
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
 
-# --- Google Sheets faylini ochish ---
+# --- Google Sheets faylini ochish va 'nakladnoy' varog'ini tanlash ---
 spreadsheet = client.open("Uzum API")
-worksheet = spreadsheet.sheet1
+worksheet = spreadsheet.worksheet("nakladnoy")
 data = worksheet.get_all_values()
 
 if not data:
@@ -42,11 +43,11 @@ def col_index(name):
     return header.index(name) if name in header else -1
 
 # --- Ustun indekslari ---
-date_col = col_index("date")
+date_col = col_index("DateCreated")
 sku_col = col_index("ProductTitle")
-quantity_col = col_index("amount")
-cost_price_col = col_index("purchasePrice")
-sold_price_col = col_index("sellerProfit")
+quantity_col = col_index("QuantityAccepted")
+cost_price_col = col_index("PurchasePrice")
+sold_price_col = col_index("SellerProfit")  # Bu ustun mavjud bo‘lishi kerak
 
 # --- Bugungi sanani olish va filtrlash ---
 today_str = datetime.now().strftime("%Y-%m-%d")
@@ -89,10 +90,12 @@ def send_photo_with_caption(photo_path, caption):
 
 # --- Jadvalni tayyorlash va Telegramga yuborish ---
 if sku_data:
-    df = pd.DataFrame([
-        {"SKU": sku, "Soni": vals["quantity"], "Savdo": vals["sales"], "Foyda": vals["profit"]}
-        for sku, vals in sku_data.items()
-    ])
+    df = pd.DataFrame([{
+        "SKU": sku,
+        "Soni": vals["quantity"],
+        "Savdo": vals["sales"],
+        "Foyda": vals["profit"]
+    } for sku, vals in sku_data.items()])
 
     total_sales = df["Savdo"].sum()
     total_profit = df["Foyda"].sum()

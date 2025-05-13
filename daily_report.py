@@ -34,33 +34,14 @@ if not data:
     print("❌ Jadval bo‘sh!")
     exit()
 
-header = data[0]
-rows = data[1:]
+rows = data[1:]  # Sarlavhasiz qatorlar
 
-# --- Ustun nomi asosida indeks aniqlash funksiyasi ---
-def col_index(name):
-    return header.index(name) if name in header else -1
-
-# --- Ustun indekslari ---
-date_col = col_index("date")
-sku_col = col_index("ProductTitle")
-quantity_col = col_index("amount")
-cost_price_col = col_index("purchasePrice")
-sold_price_col = col_index("SellerProfit")
-
-# --- Ustunlar mavjudligini tekshirish ---
-required_indices = {
-    "date": date_col,
-    "ProductTitle": sku_col,
-    "amount": quantity_col,
-    "purchasePrice": cost_price_col,
-    "sellerProfit": sold_price_col
-}
-
-for col_name, idx in required_indices.items():
-    if idx == -1:
-        print(f"❌ '{col_name}' ustuni topilmadi. Jadval sarlavhasini tekshiring.")
-        exit()
+# --- Ustun indekslari (qo‘lda berilgan) ---
+date_col = 12
+sku_col = 3
+quantity_col = 7
+cost_price_col = 10
+sold_price_col = 8
 
 # --- Bugungi sanani olish va filtrlash ---
 today_str = datetime.now().strftime("%Y-%m-%d")
@@ -71,14 +52,12 @@ sku_data = defaultdict(lambda: {"quantity": 0, "sales": 0, "profit": 0})
 
 for row in today_orders:
     try:
-        # Qator to‘liq bo‘lishini tekshirish
         if len(row) <= max(sku_col, quantity_col, cost_price_col, sold_price_col):
             continue
 
         product_title = row[sku_col].strip()
         sku = product_title.split("-")[0].strip() if "-" in product_title else product_title
 
-        # Qiymatlarni xavfsiz tarzda o‘qish
         quantity = int(row[quantity_col].strip()) if row[quantity_col].strip().isdigit() else 0
         cost = int(row[cost_price_col].strip()) if row[cost_price_col].strip().isdigit() else 0
         sold = int(row[sold_price_col].strip()) if row[sold_price_col].strip().isdigit() else 0
@@ -120,7 +99,7 @@ if sku_data:
     total_sales = df["Savdo"].sum()
     total_profit = df["Foyda"].sum()
 
-    # Matplotlib orqali jadval rasm yaratish
+    # Jadval rasmga aylantirish
     plt.figure(figsize=(8, 4))
     plt.axis('off')
     table = plt.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')

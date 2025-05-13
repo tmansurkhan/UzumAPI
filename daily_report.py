@@ -46,7 +46,7 @@ date_col = col_index("date")
 sku_col = col_index("ProductTitle")
 quantity_col = col_index("amount")
 cost_price_col = col_index("purchasePrice")
-sold_price_col = col_index("sellerProfit")
+sold_price_col = col_index("SellerProfit")
 
 # --- Ustunlar mavjudligini tekshirish ---
 required_indices = {

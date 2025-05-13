@@ -47,7 +47,7 @@ date_col = col_index("DateCreated")
 sku_col = col_index("ProductTitle")
 quantity_col = col_index("QuantityAccepted")
 cost_price_col = col_index("PurchasePrice")
-sold_price_col = col_index("SellerProfit")  # Bu ustun mavjud bo‘lishi kerak
+sold_price_col = col_index("SellerProfit")  # Yaxshi bo‘lsa, aniqlik kiriting
 
 # --- Bugungi sanani olish va filtrlash ---
 today_str = datetime.now().strftime("%Y-%m-%d")
@@ -58,13 +58,14 @@ sku_data = defaultdict(lambda: {"quantity": 0, "sales": 0, "profit": 0})
 
 for row in today_orders:
     try:
+        # ProductTitle dan SKU qismini ajratib olish
         sku = row[sku_col].split("-")[0].strip() if "-" in row[sku_col] else row[sku_col].strip()
         quantity = int(row[quantity_col]) if row[quantity_col] else 0
         cost = int(row[cost_price_col]) if row[cost_price_col] else 0
         sold = int(row[sold_price_col]) if row[sold_price_col] else 0
 
-        profit = (sold - cost) * quantity
         sales = sold * quantity
+        profit = (sold - cost) * quantity
 
         sku_data[sku]["quantity"] += quantity
         sku_data[sku]["sales"] += sales
@@ -112,8 +113,8 @@ if sku_data:
     plt.close()
 
     caption = f"""📊 <b>Kunlik hisobot — {today_str}</b>
-💰 <b>Jami savdo:</b> {total_sales} so'm
-📈 <b>Jami foyda:</b> {total_profit} so'm"""
+💰 <b>Jami savdo:</b> {total_sales:,} so'm
+📈 <b>Jami foyda:</b> {total_profit:,} so'm"""
 
     send_photo_with_caption(image_path, caption)
 else:
